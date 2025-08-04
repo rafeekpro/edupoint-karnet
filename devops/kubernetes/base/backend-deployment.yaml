@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: edupoint-backend
+  labels:
+    app: edupoint-backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: edupoint-backend
+  template:
+    metadata:
+      labels:
+        app: edupoint-backend
+    spec:
+      imagePullSecrets:
+      - name: ghcr-secret
+      containers:
+      - name: backend
+        image: ghcr.io/rafeekpro/edupoint-backend-prod
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DATABASE_URL
+          value: "postgresql://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)"
+        - name: DB_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: edupoint-config
+              key: DB_HOST
+        - name: DB_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: edupoint-config
+              key: DB_PORT
+        - name: DB_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: edupoint-config
+              key: DB_NAME
+        - name: DB_USER
+          value: therapy_user
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: edupoint-secrets
+              key: DB_PASSWORD
+        - name: JWT_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: edupoint-secrets
+              key: JWT_SECRET_KEY
+        - name: ENVIRONMENT
+          valueFrom:
+            configMapKeyRef:
+              name: edupoint-config
+              key: ENVIRONMENT
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"

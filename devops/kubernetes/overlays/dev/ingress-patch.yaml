@@ -1,0 +1,33 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: edupoint-ingress
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-staging"
+spec:
+  tls:
+  - hosts:
+    - karnet-dev.edupoint.pl
+    - karnetapi-dev.edupoint.pl
+    secretName: edupoint-dev-tls
+  rules:
+  - host: karnet-dev.edupoint.pl
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: edupoint-frontend
+            port:
+              number: 3000
+  - host: karnetapi-dev.edupoint.pl
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: edupoint-backend
+            port:
+              number: 8000

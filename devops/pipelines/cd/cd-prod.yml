@@ -1,0 +1,630 @@
+trigger: none
+
+pr: none
+
+resources:
+  pipelines:
+  - pipeline: ci-pipeline
+    source: CI-Prod  # IMPORTANT: Replace with actual CI pipeline name from Azure DevOps
+    trigger:
+      branches:
+        include:
+        - main
+
+parameters:
+  - name: environment
+    displayName: 'Target Environment'
+    type: string
+    default: 'prod'
+    values:
+      - prod
+
+  - name: imageTag
+    displayName: 'Docker Image Tag'
+    type: string
+    default: '$(Build.BuildId)-$(Build.SourceBranchName)'
+
+  - name: deployBackend
+    displayName: 'Deploy Backend'
+    type: boolean
+    default: true
+
+  - name: deployFrontend
+    displayName: 'Deploy Frontend'
+    type: boolean
+    default: true
+
+  - name: runE2ETests
+    displayName: 'Run E2E Tests'
+    type: boolean
+    default: true
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  - group: edupoint-voucher-library
+  - name: containerRegistry
+    value: 'ghcr.io/$(GITHUB_USER)'
+  - name: deployEnvironment
+    value: 'prod'
+  - name: deployImageTag
+    value: ${{ parameters.imageTag }}
+  - name: namespace
+    value: 'edupoint-$(deployEnvironment)'
+
+stages:
+- stage: PreDeploy
+  displayName: 'Pre-Deployment Checks'
+  jobs:
+  - job: ValidateParameters
+    displayName: 'Validate Deployment Parameters'
+    steps:
+    - script: |
+        echo "Deploying to $(deployEnvironment) environment"
+        echo "Using image tag: $(deployImageTag)"
+        # Try to get version tag from CI pipeline trigger
+        if [ ! -z "$(resources.pipeline.ci-pipeline.runID)" ]; then
+          CI_BUILD_ID=$(resources.pipeline.ci-pipeline.runID)
+          CI_SOURCE_COMMIT="$(resources.pipeline.ci-pipeline.sourceCommit)"
+          SHORT_SHA=$(echo ${CI_SOURCE_COMMIT} | cut -c1-7)
+          VERSION_TAG="${CI_BUILD_ID}-${SHORT_SHA}"
+          echo "Using version tag from CI pipeline: ${VERSION_TAG}"
+          echo "##vso[task.setvariable variable=deployVersionTag;isOutput=true]${VERSION_TAG}"
+        else
+          echo "No CI pipeline trigger detected, using parameter: ${{ parameters.imageTag }}"
+          echo "##vso[task.setvariable variable=deployVersionTag;isOutput=true]${{ parameters.imageTag }}"
+        fi
+        echo "Components to deploy:"
+        echo "  - Backend API: ${{ parameters.deployBackend }}"
+        echo "  - Frontend: ${{ parameters.deployFrontend }}"
+        echo "  - Run E2E Tests: ${{ parameters.runE2ETests }}"
+        echo "Namespace: $(namespace)"
+      name: ValidateParameters
+      displayName: 'Display Deployment Info'
+
+    # Option 1: Use Kubernetes service connection (recommended)
+    # Uncomment this task and comment out the Bash task below if you have a Kubernetes service connection
+    # - task: KubernetesManifest@0
+    #   displayName: 'Configure kubectl using service connection'
+    #   inputs:
+    #     action: 'deploy'
+    #     kubernetesServiceConnection: 'YOUR_K8S_SERVICE_CONNECTION_NAME'
+    #     namespace: '$(namespace)'
+    #     manifests: |
+    #       devops/kubernetes/base/namespace.yaml
+    
+    # Option 2: Manual kubectl configuration
+    - task: Bash@3
+      displayName: 'Install and Configure kubectl'
+      inputs:
+        targetType: 'inline'
+        script: |
+          echo "=== Installing kubectl ==="
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/
+          kubectl version --client
+          
+          echo "=== Configuring kubectl ==="
+          
+          # KUBECONFIG_CONTENT must be set in variable group as base64 encoded kubeconfig
+          if [ -z "$(KUBECONFIG_CONTENT)" ]; then
+            echo "##[error]ERROR: KUBECONFIG_CONTENT variable not found!"
+            echo "##[error]Please add KUBECONFIG_CONTENT to your variable group 'edupoint-voucher-library'"
+            echo "##[error]The variable should contain base64 encoded kubeconfig file"
+            echo "##[error]You can create it with: cat ~/.kube/config | base64 -w 0"
+            exit 1
+          fi
+          
+          echo "Found KUBECONFIG_CONTENT variable, setting up kubectl..."
+          mkdir -p $HOME/.kube
+          echo "$(KUBECONFIG_CONTENT)" | base64 -d > $HOME/.kube/config
+          chmod 600 $HOME/.kube/config
+          export KUBECONFIG=$HOME/.kube/config
+          echo "Kubeconfig written to $HOME/.kube/config"
+          
+          echo ""
+          echo "=== Debugging kubeconfig ==="
+          echo "Checking server address in kubeconfig:"
+          grep -E "server:|cluster:" $HOME/.kube/config | head -5
+          echo ""
+          echo "Current context:"
+          kubectl config current-context || echo "No current context set"
+          echo ""
+          echo "Available contexts:"
+          kubectl config get-contexts || echo "No contexts available"
+          
+          echo ""
+          echo "=== Testing kubectl connection ==="
+          kubectl version
+          kubectl cluster-info
+          echo ""
+          echo "=== Available namespaces ==="
+          kubectl get namespaces
+
+    - task: Bash@3
+      displayName: 'Create/Update Namespace'
+      inputs:
+        targetType: 'inline'
+        script: |
+          # KUBECONFIG should be set by pipeline variable to /home/vsts/.kube/config
+          echo "Using KUBECONFIG from environment: $KUBECONFIG"
+          
+          # Create namespace
+          kubectl create namespace $(namespace) --dry-run=client -o yaml | kubectl apply -f - --validate=false
+    
+    - task: Bash@3
+      displayName: 'Create/Update GitHub Container Registry Secret'
+      inputs:
+        targetType: 'inline'
+        script: |
+          echo "##[section]========================================"
+          echo "##[section]🔑 CREATING GITHUB REGISTRY SECRET"
+          echo "##[section]========================================"
+          
+          if [ -z "$(GITHUB_USER)" ] || [ -z "$(GITHUB_PAT)" ]; then
+            echo "##[error]ERROR: GITHUB_USER or GITHUB_PAT not set!"
+            echo "##[error]These variables must be defined in the variable group 'edupoint-voucher-library'"
+            exit 1
+          fi
+          
+          echo "Creating GitHub Container Registry secret..."
+          kubectl create secret docker-registry ghcr-secret \
+            --namespace=$(namespace) \
+            --docker-server=ghcr.io \
+            --docker-username=$(GITHUB_USER) \
+            --docker-password=$(GITHUB_PAT) \
+            --dry-run=client -o yaml | kubectl apply -f -
+          
+          # Verify secret was created
+          echo "##[command]Verifying secret creation:"
+          kubectl get secret ghcr-secret -n $(namespace) -o yaml | head -10
+          
+          echo "##[section]✅ SECRET CREATED SUCCESSFULLY"
+          echo "##[section]========================================"
+
+- stage: DeployBackend
+  displayName: 'Deploy Backend Service'
+  dependsOn: PreDeploy
+  condition: and(succeeded(), eq('${{ parameters.deployBackend }}', 'true'))
+  jobs:
+  - job: DeployBackendService
+    displayName: 'Deploy Backend API'
+    variables:
+      deployVersionTag: $[stageDependencies.PreDeploy.ValidateParameters.outputs['ValidateParameters.deployVersionTag']]
+    steps:
+    - checkout: self
+
+    - task: Bash@3
+      displayName: 'Create/Update Backend Secret'
+      inputs:
+        targetType: 'inline'
+        script: |
+          kubectl create secret generic edupoint-prod-secrets \
+          --namespace=$(namespace) \
+          --from-literal=db-password=$(DB_PASSWORD_PROD) \
+          --from-literal=jwt-secret=$(JWT_SECRET_KEY_PROD) \
+          --dry-run=client -o yaml | kubectl apply -f -
+
+    - task: Bash@3
+      displayName: 'Pre-deployment Cleanup - Remove Any :prod Tags'
+      inputs:
+        targetType: 'inline'
+        script: |
+          echo "=== Pre-deployment cleanup for edupoint-backend ==="
+          
+          # Check if deployment exists with :prod tag
+          CURRENT_IMAGE=$(kubectl get deployment edupoint-backend -n $(namespace) -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null || echo "")
+          if [[ "$CURRENT_IMAGE" == *":prod" ]]; then
+            echo "❌ Found :prod tag in existing deployment: $CURRENT_IMAGE"
+            echo "Cleaning up old deployment..."
+            
+            # Delete the deployment
+            kubectl delete deployment edupoint-backend -n $(namespace) --ignore-not-found=true
+            
+            # Delete all associated ReplicaSets
+            kubectl delete rs -l app=edupoint-backend -n $(namespace) --ignore-not-found=true
+            
+            # Wait a bit for cleanup
+            sleep 5
+            echo "Cleanup completed"
+          else
+            echo "✅ No :prod tag found in existing deployment"
+          fi
+
+    - task: Bash@3
+      displayName: 'Deploy Backend using Kustomize'
+      inputs:
+        targetType: 'inline'
+        script: |
+          cd devops/kubernetes/overlays/prod
+          
+          # Clean up any old deployment.yaml to ensure fresh build
+          echo "##[command]Cleaning up old deployment.yaml"
+          rm -f deployment.yaml
+          
+          echo "Current directory: $(pwd)"
+          echo "Files in directory:"
+          ls -la
+          
+          # Get the version tag from PreDeploy stage
+          VERSION_TAG="$(deployVersionTag)"
+          
+          echo "##[debug]Raw deployVersionTag value: '$(deployVersionTag)'"
+          echo "##[debug]VERSION_TAG variable: '$VERSION_TAG'"
+          
+          # Final validation
+          if [ -z "$VERSION_TAG" ] || [ "$VERSION_TAG" = "prod" ] || [ "$VERSION_TAG" = "" ]; then
+            echo "##[error]ERROR: Invalid or empty version tag: '$VERSION_TAG'"
+            echo "##[error]This pipeline must be triggered by a successful CI build"
+            exit 1
+          fi
+          
+          echo "Using version tag: $VERSION_TAG"
+          
+          # Update image tags
+          echo "##[section]========================================"
+          echo "##[section]🔄 UPDATING IMAGE CONFIGURATIONS"
+          echo "##[section]========================================"
+          echo "##[command]Setting version tag $VERSION_TAG for backend"
+          echo "##[command]Environment: PRODUCTION"
+          echo "##[section]========================================"
+          kustomize edit set image \
+            ghcr.io/$(GITHUB_USER)/edupoint-backend-prod=ghcr.io/$(GITHUB_USER)/edupoint-backend-prod:$VERSION_TAG
+          
+          # Build configuration
+          echo "=== Building configuration ==="
+          kustomize build . > deployment.yaml
+          
+          # Show the generated YAML for debugging
+          echo "##[section]========================================"
+          echo "##[section]📋 GENERATED KUBERNETES CONFIGURATION"
+          echo "##[section]========================================"
+          echo "Generated deployment.yaml content (first 50 lines):"
+          head -50 deployment.yaml
+          echo "##[section]========================================"
+          
+          # Check if deployment.yaml was created and has content
+          if [ ! -s deployment.yaml ]; then
+            echo "##[error]ERROR: deployment.yaml is empty or not created!"
+            echo "Kustomize build output:"
+            kustomize build . || true
+            exit 1
+          fi
+          
+          # Apply the configuration
+          echo "##[section]========================================"
+          echo "##[section]🚀 DEPLOYING BACKEND TO KUBERNETES"
+          echo "##[section]========================================"
+          kubectl apply -f deployment.yaml --validate=false -v=5
+          
+          echo "##[section]✅ BACKEND CONFIGURATION APPLIED SUCCESSFULLY"
+          echo "##[section]========================================"
+          
+          # Check if deployment exists before trying to restart
+          if kubectl get deployment edupoint-backend -n $(namespace) &> /dev/null; then
+            echo "##[section]🔄 Forcing rollout restart to pull new image"
+            kubectl rollout restart deployment/edupoint-backend -n $(namespace)
+          else
+            echo "##[section]📦 First deployment - no restart needed"
+          fi
+
+    - task: Bash@3
+      displayName: 'Wait for Backend Deployment'
+      inputs:
+        targetType: 'inline'
+        script: |
+          echo "Checking deployment status..."
+          echo "Namespace: $(namespace)"
+          
+          echo "\n=== All resources in namespace ==="
+          kubectl get all -n $(namespace)
+          
+          echo "\n=== Checking specific deployment ==="
+          kubectl get deployment edupoint-backend -n $(namespace) || echo "Deployment not found"
+          
+          echo "Checking pods..."
+          kubectl get pods -n $(namespace) -l app=edupoint-backend
+          
+          echo "Waiting for deployment rollout..."
+          kubectl rollout status deployment/edupoint-backend -n $(namespace) --timeout=300s || {
+            echo "Deployment failed or timed out. Checking deployment details..."
+            kubectl describe deployment edupoint-backend -n $(namespace)
+            echo "Checking pod status..."
+            kubectl describe pods -n $(namespace) -l app=edupoint-backend
+            echo "Recent logs from all pods..."
+            kubectl logs -n $(namespace) -l app=edupoint-backend --tail=50 --all-containers=true
+            exit 1
+          }
+
+- stage: DeployFrontend
+  displayName: 'Deploy Frontend Service'
+  dependsOn: PreDeploy
+  condition: and(succeeded(), eq('${{ parameters.deployFrontend }}', 'true'))
+  jobs:
+  - job: DeployFrontendService
+    displayName: 'Deploy Frontend'
+    variables:
+      deployVersionTag: $[stageDependencies.PreDeploy.ValidateParameters.outputs['ValidateParameters.deployVersionTag']]
+    steps:
+    - checkout: self
+
+    - task: Bash@3
+      displayName: 'Pre-deployment Cleanup - Remove Any :prod Tags'
+      inputs:
+        targetType: 'inline'
+        script: |
+          echo "=== Pre-deployment cleanup for edupoint-frontend ==="
+          
+          # Check if deployment exists with :prod tag
+          CURRENT_IMAGE=$(kubectl get deployment edupoint-frontend -n $(namespace) -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null || echo "")
+          if [[ "$CURRENT_IMAGE" == *":prod" ]]; then
+            echo "❌ Found :prod tag in existing deployment: $CURRENT_IMAGE"
+            echo "Cleaning up old deployment..."
+            
+            # Delete the deployment
+            kubectl delete deployment edupoint-frontend -n $(namespace) --ignore-not-found=true
+            
+            # Delete all associated ReplicaSets
+            kubectl delete rs -l app=edupoint-frontend -n $(namespace) --ignore-not-found=true
+            
+            # Wait a bit for cleanup
+            sleep 5
+            echo "Cleanup completed"
+          else
+            echo "✅ No :prod tag found in existing deployment"
+          fi
+
+    - task: Bash@3
+      displayName: 'Deploy Frontend using Kustomize'
+      inputs:
+        targetType: 'inline'
+        script: |
+          cd devops/kubernetes/overlays/prod
+          
+          # Clean up any old deployment.yaml to ensure fresh build
+          echo "##[command]Cleaning up old deployment.yaml"
+          rm -f deployment.yaml
+          
+          # Get the version tag from PreDeploy stage
+          VERSION_TAG="$(deployVersionTag)"
+          
+          echo "##[debug]Raw deployVersionTag value: '$(deployVersionTag)'"
+          echo "##[debug]VERSION_TAG variable: '$VERSION_TAG'"
+          
+          # Final validation
+          if [ -z "$VERSION_TAG" ] || [ "$VERSION_TAG" = "prod" ] || [ "$VERSION_TAG" = "" ]; then
+            echo "##[error]ERROR: Invalid or empty version tag: '$VERSION_TAG'"
+            echo "##[error]This pipeline must be triggered by a successful CI build"
+            exit 1
+          fi
+          
+          echo "Using version tag: $VERSION_TAG"
+          
+          # Update image tags
+          echo "##[section]========================================"
+          echo "##[section]🔄 UPDATING IMAGE CONFIGURATIONS"
+          echo "##[section]========================================"
+          echo "##[command]Setting version tag $VERSION_TAG for frontend"
+          echo "##[command]Environment: PRODUCTION"
+          echo "##[section]========================================"
+          kustomize edit set image \
+            ghcr.io/$(GITHUB_USER)/edupoint-frontend-prod=ghcr.io/$(GITHUB_USER)/edupoint-frontend-prod:$VERSION_TAG
+          
+          # Build configuration
+          echo "=== Building configuration ==="
+          kustomize build . > deployment.yaml
+          
+          # Apply the configuration
+          echo "##[section]========================================"
+          echo "##[section]🚀 DEPLOYING FRONTEND TO KUBERNETES"
+          echo "##[section]========================================"
+          kubectl apply -f deployment.yaml
+          
+          echo "##[section]✅ FRONTEND CONFIGURATION APPLIED SUCCESSFULLY"
+          echo "##[section]========================================"
+          
+          # Check if deployment exists before trying to restart
+          if kubectl get deployment edupoint-frontend -n $(namespace) &> /dev/null; then
+            echo "##[section]🔄 Forcing rollout restart to pull new image"
+            kubectl rollout restart deployment/edupoint-frontend -n $(namespace)
+          else
+            echo "##[section]📦 First deployment - no restart needed"
+          fi
+
+    - task: Bash@3
+      displayName: 'Wait for Frontend Deployment'
+      inputs:
+        targetType: 'inline'
+        script: |
+          echo "Checking deployment status..."
+          kubectl get deployment edupoint-frontend -n $(namespace)
+          
+          echo "Checking pods..."
+          kubectl get pods -n $(namespace) -l app=edupoint-frontend
+          
+          echo "Waiting for deployment rollout..."
+          kubectl rollout status deployment/edupoint-frontend -n $(namespace) --timeout=300s || {
+            echo "Frontend deployment failed. Checking status..."
+            kubectl describe pods -n $(namespace) -l app=edupoint-frontend
+            kubectl logs -n $(namespace) -l app=edupoint-frontend --tail=50
+            exit 1
+          }
+
+- stage: PostDeployment
+  displayName: 'Post-Deployment Validation'
+  dependsOn: 
+    - DeployBackend
+    - DeployFrontend
+  condition: |
+    and(
+      not(failed()),
+      or(
+        eq(dependencies.DeployBackend.result, 'Succeeded'),
+        eq(dependencies.DeployBackend.result, 'Skipped')
+      ),
+      or(
+        eq(dependencies.DeployFrontend.result, 'Succeeded'),
+        eq(dependencies.DeployFrontend.result, 'Skipped')
+      )
+    )
+  jobs:
+  - job: ValidateDeployment
+    displayName: 'Validate Deployment'
+    steps:
+    - task: Bash@3
+      displayName: 'Check Certificate Status'
+      inputs:
+        targetType: 'inline'
+        script: |
+          echo "=== Checking Certificate Status ==="
+          
+          # Get all certificates
+          kubectl get certificates -n $(namespace)
+          
+          echo ""
+          echo "=== Certificate Details ==="
+          kubectl describe certificates -n $(namespace) | grep -E "(Ready|Issuer|DNS Names)" | head -20
+          
+          echo ""
+          echo "=== Cert-Manager Status ==="
+          if ! kubectl get pods -n cert-manager --no-headers 2>/dev/null | grep -q Running; then
+            echo "❌ Cert-manager pods are not healthy!"
+            kubectl get pods -n cert-manager
+          else
+            echo "✅ Cert-manager is running"
+            kubectl get pods -n cert-manager
+          fi
+
+    - task: Bash@3
+      displayName: 'Check Deployment Status'
+      inputs:
+        targetType: 'inline'
+        script: |
+          echo "=== Checking deployment status ==="
+          echo "Deployments:"
+          kubectl get deployments -n $(namespace)
+          echo ""
+          echo "Pods:"
+          kubectl get pods -n $(namespace)
+          echo ""
+          echo "Services:"
+          kubectl get services -n $(namespace)
+          echo ""
+          echo "Ingress:"
+          kubectl get ingress -n $(namespace)
+
+    - task: Bash@3
+      displayName: 'Validate Deployment Health'
+      inputs:
+        targetType: 'inline'
+        script: |
+          echo "=== Validating Deployment Health ==="
+          DEPLOYMENT_HEALTHY=true
+          
+          # Check backend deployment if it was deployed
+          if [ "${{ parameters.deployBackend }}" = "true" ]; then
+            echo "Checking edupoint-backend deployment..."
+            READY_REPLICAS=$(kubectl get deployment edupoint-backend -n $(namespace) -o jsonpath='{.status.readyReplicas}' || echo "0")
+            DESIRED_REPLICAS=$(kubectl get deployment edupoint-backend -n $(namespace) -o jsonpath='{.spec.replicas}' || echo "1")
+            
+            if [ "$READY_REPLICAS" != "$DESIRED_REPLICAS" ]; then
+              echo "❌ edupoint-backend: Only $READY_REPLICAS/$DESIRED_REPLICAS replicas are ready"
+              DEPLOYMENT_HEALTHY=false
+            else
+              echo "✅ edupoint-backend: $READY_REPLICAS/$DESIRED_REPLICAS replicas ready"
+            fi
+          fi
+          
+          # Check frontend deployment if it was deployed
+          if [ "${{ parameters.deployFrontend }}" = "true" ]; then
+            echo "Checking edupoint-frontend deployment..."
+            READY_REPLICAS=$(kubectl get deployment edupoint-frontend -n $(namespace) -o jsonpath='{.status.readyReplicas}' || echo "0")
+            DESIRED_REPLICAS=$(kubectl get deployment edupoint-frontend -n $(namespace) -o jsonpath='{.spec.replicas}' || echo "1")
+            
+            if [ "$READY_REPLICAS" != "$DESIRED_REPLICAS" ]; then
+              echo "❌ edupoint-frontend: Only $READY_REPLICAS/$DESIRED_REPLICAS replicas are ready"
+              DEPLOYMENT_HEALTHY=false
+            else
+              echo "✅ edupoint-frontend: $READY_REPLICAS/$DESIRED_REPLICAS replicas ready"
+            fi
+          fi
+          
+          # Check for image pull errors
+          echo ""
+          echo "=== Checking for Image Pull Errors ==="
+          IMAGE_PULL_ERRORS=$(kubectl get events -n $(namespace) --field-selector type=Warning | grep -E "(ErrImagePull|ImagePullBackOff|InvalidImageName)" | tail -10)
+          if [ ! -z "$IMAGE_PULL_ERRORS" ]; then
+            echo "❌ Found image pull errors:"
+            echo "$IMAGE_PULL_ERRORS"
+            DEPLOYMENT_HEALTHY=false
+          fi
+          
+          # Final verdict
+          echo ""
+          echo "=== Deployment Health Summary ==="
+          if [ "$DEPLOYMENT_HEALTHY" = "false" ]; then
+            echo "❌ DEPLOYMENT FAILED!"
+            exit 1
+          else
+            echo "✅ All deployments are healthy!"
+          fi
+
+    - task: Bash@3
+      displayName: 'Check Application Health'
+      inputs:
+        targetType: 'inline'
+        script: |
+          echo "=== Checking application endpoints ==="
+          
+          # Get ingress endpoints
+          FRONTEND_URL=$(kubectl get ingress edupoint-frontend-ingress -n $(namespace) -o jsonpath='{.spec.rules[0].host}' 2>/dev/null || echo "")
+          BACKEND_URL=$(kubectl get ingress edupoint-backend-ingress -n $(namespace) -o jsonpath='{.spec.rules[0].host}' 2>/dev/null || echo "")
+          
+          if [ ! -z "$FRONTEND_URL" ]; then
+            echo "Frontend URL: https://$FRONTEND_URL"
+            curl -s -o /dev/null -w "Frontend HTTP Status: %{http_code}\n" https://$FRONTEND_URL || true
+          fi
+          
+          if [ ! -z "$BACKEND_URL" ]; then
+            echo "Backend URL: https://$BACKEND_URL"
+            curl -s -o /dev/null -w "Backend HTTP Status: %{http_code}\n" https://$BACKEND_URL/docs || true
+          fi
+
+- stage: E2ETesting
+  displayName: 'Run E2E Tests'
+  dependsOn: PostDeployment
+  condition: and(succeeded(), eq('${{ parameters.runE2ETests }}', 'true'))
+  jobs:
+  - job: RunE2ETests
+    displayName: 'Execute E2E Tests'
+    pool:
+      vmImage: 'ubuntu-latest'  # E2E tests run on standard agent
+    steps:
+    - checkout: self
+    
+    - task: NodeTool@0
+      inputs:
+        versionSpec: '22.14.0'
+      displayName: 'Install Node.js'
+    
+    - script: |
+        cd e2e-tests
+        npm ci
+        npx playwright install --with-deps
+      displayName: 'Install E2E Dependencies'
+    
+    - script: |
+        cd e2e-tests
+        export BASE_URL=https://karnet.edupoint.pl
+        export API_URL=https://karnetapi.edupoint.pl
+        npm test
+      displayName: 'Run E2E Tests'
+    
+    - task: PublishTestResults@2
+      condition: always()
+      inputs:
+        testResultsFormat: 'JUnit'
+        testResultsFiles: 'e2e-tests/test-results/junit.xml'
+        testRunTitle: 'E2E Test Results'

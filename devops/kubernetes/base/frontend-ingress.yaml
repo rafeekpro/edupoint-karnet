@@ -1,0 +1,26 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: edupoint-frontend-ingress
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.middlewares: edupoint-prod-redirect-to-https@kubernetescrd,edupoint-prod-security-headers@kubernetescrd
+spec:
+  ingressClassName: traefik
+  tls:
+  - hosts:
+    - karnet.edupoint.pl
+    secretName: edupoint-frontend-tls
+  rules:
+  - host: karnet.edupoint.pl
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: edupoint-frontend
+            port:
+              number: 3000

@@ -1,0 +1,314 @@
+name: CI-Prod-$(Date:yyyyMMdd).$(Rev:r)
+
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - backend/**
+      - frontend/**
+      - e2e-tests/**
+      - devops/pipelines/ci/ci-prod.yml
+
+pr:
+  branches:
+    include:
+      - main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  - group: edupoint-voucher-library
+  - name: dockerRegistry
+    value: 'ghcr.io'
+  - name: environment
+    value: 'production'
+  - name: dbUser
+    value: $(DB_USER_PROD)
+  - name: dbPassword
+    value: $(DB_PASSWORD_PROD)
+  - name: dbName
+    value: 'therapy_system_prod'
+  - name: versionTag
+    value: '$(Build.BuildId)-$(Build.SourceVersion)'
+
+stages:
+- stage: BuildAll
+  displayName: 'Build All Components'
+  jobs:
+  - job: BuildBackend
+    displayName: 'Build Backend API'
+    steps:
+    - checkout: self
+      displayName: 'Checkout repository'
+    
+    - task: Bash@3
+      displayName: 'Login to GitHub Container Registry'
+      inputs:
+        targetType: 'inline'
+        script: |
+          echo "$(GITHUB_PAT)" | docker login $(dockerRegistry) -u $(GITHUB_USER) --password-stdin
+
+    - task: Bash@3
+      displayName: 'Build and Push Backend API'
+      inputs:
+        targetType: 'inline'
+        script: |
+          cd backend
+          
+          # Extract short SHA for version tag
+          SHORT_SHA=$(echo $(Build.SourceVersion) | cut -c1-7)
+          VERSION_TAG="$(Build.BuildId)-${SHORT_SHA}"
+          echo "Building with version tag: ${VERSION_TAG}"
+          
+          # Check if proxy is configured
+          if [ ! -z "$(HTTP_PROXY)" ]; then
+            echo "Using proxy: $(HTTP_PROXY)"
+            PROXY_ARGS="--build-arg HTTP_PROXY=$(HTTP_PROXY) --build-arg HTTPS_PROXY=$(HTTPS_PROXY) --build-arg NO_PROXY=$(NO_PROXY)"
+          else
+            PROXY_ARGS=""
+          fi
+          
+          # Build with all necessary build arguments
+          docker build \
+            --build-arg DB_HOST="$(DB_HOST)" \
+            --build-arg DB_PORT="$(DB_PORT)" \
+            --build-arg DB_NAME="$(dbName)" \
+            --build-arg DB_USER="$(dbUser)" \
+            --build-arg DB_PASSWORD="$(dbPassword)" \
+            $PROXY_ARGS \
+            --build-arg JWT_SECRET_KEY="$(JWT_SECRET_KEY)" \
+            --build-arg ENVIRONMENT="$(environment)" \
+            -t $(dockerRegistry)/$(GITHUB_USER)/edupoint-backend-prod:${VERSION_TAG} .
+          
+          # Test API image
+          echo "Testing API image..."
+          docker run --rm \
+            -e DATABASE_URL=postgresql://test:test@localhost:5432/test \
+            -e JWT_SECRET_KEY=test \
+            $(dockerRegistry)/$(GITHUB_USER)/edupoint-backend-prod:${VERSION_TAG} \
+            python -c "import sys; sys.path.append('/app'); from main import app; print('✓ API imports successful')" || exit 1
+          
+          # Push image
+          docker push $(dockerRegistry)/$(GITHUB_USER)/edupoint-backend-prod:${VERSION_TAG}
+          
+          # Verify what was pushed
+          echo "##[section]========================================"
+          echo "##[section]📦 BACKEND API IMAGE PUSHED SUCCESSFULLY"
+          echo "##[section]========================================"
+          echo "##[command]Registry: $(dockerRegistry)/$(GITHUB_USER)"
+          echo "##[command]Image:    edupoint-backend-prod:${VERSION_TAG}"
+          echo "##[command]Tag:      ${VERSION_TAG}"
+          echo "##[command]BuildId:  $(Build.BuildId)"
+          echo "##[command]SHA:      ${SHORT_SHA}"
+          echo "##[section]========================================"
+          docker images | grep edupoint-backend-prod | head -3
+          
+          # Export version tag for CD pipeline
+          echo "##vso[task.setvariable variable=apiVersionTag;isOutput=true]${VERSION_TAG}"
+
+  - job: BuildFrontend
+    displayName: 'Build React Frontend'
+    steps:
+    - checkout: self
+      displayName: 'Checkout repository'
+    
+    - task: Bash@3
+      displayName: 'Login to GitHub Container Registry'
+      inputs:
+        targetType: 'inline'
+        script: |
+          echo "$(GITHUB_PAT)" | docker login $(dockerRegistry) -u $(GITHUB_USER) --password-stdin
+
+    - task: Bash@3
+      displayName: 'Validate Frontend Code Quality'
+      inputs:
+        targetType: 'inline'
+        script: |
+          cd frontend
+          
+          echo "=== Running Code Quality Checks ==="
+          
+          # Install dependencies first
+          echo "📦 Installing dependencies..."
+          npm ci
+          
+          # 1. TypeScript compilation check
+          echo ""
+          echo "📝 Checking TypeScript compilation..."
+          npx tsc --noEmit
+          if [ $? -ne 0 ]; then
+            echo "❌ TypeScript compilation failed!"
+            exit 1
+          fi
+          echo "✅ TypeScript compilation passed"
+          
+          # 2. ESLint check (if configured)
+          # echo ""
+          # echo "🔍 Running ESLint checks..."
+          # npm run lint
+          # if [ $? -ne 0 ]; then
+          #   echo "❌ ESLint errors found!"
+          #   exit 1
+          # fi
+          # echo "✅ ESLint checks passed"
+          
+          echo ""
+          echo "✅ All validation checks passed!"
+
+    - task: Bash@3
+      displayName: 'Build and Push React Frontend'
+      inputs:
+        targetType: 'inline'
+        script: |
+          cd frontend
+          
+          # Set API URL for production
+          API_URL="https://karnetapi.edupoint.pl"
+          
+          # Extract short SHA for version tag
+          SHORT_SHA=$(echo $(Build.SourceVersion) | cut -c1-7)
+          VERSION_TAG="$(Build.BuildId)-${SHORT_SHA}"
+          echo "Building with version tag: ${VERSION_TAG}"
+          
+          # Build image
+          docker build \
+            --build-arg REACT_APP_API_URL="$API_URL" \
+            --build-arg REACT_APP_ENVIRONMENT="$(environment)" \
+            -f Dockerfile.prod \
+            -t $(dockerRegistry)/$(GITHUB_USER)/edupoint-frontend-prod:${VERSION_TAG} .
+          
+          # Test React image
+          echo "Testing React image..."
+          docker run --rm -d --name frontend-test -p 3001:3000 \
+            $(dockerRegistry)/$(GITHUB_USER)/edupoint-frontend-prod:${VERSION_TAG}
+          sleep 10
+          if curl -f http://localhost:3001 2>/dev/null | grep -q "html"; then
+            echo "✓ React image test PASSED"
+            docker stop frontend-test
+          else
+            echo "✗ React image test FAILED"
+            docker logs frontend-test
+            docker stop frontend-test
+            exit 1
+          fi
+          
+          # Push image
+          docker push $(dockerRegistry)/$(GITHUB_USER)/edupoint-frontend-prod:${VERSION_TAG}
+          
+          # Verify what was pushed
+          echo "##[section]========================================"
+          echo "##[section]🎭 FRONTEND IMAGE PUSHED SUCCESSFULLY"
+          echo "##[section]========================================"
+          echo "##[command]Registry: $(dockerRegistry)/$(GITHUB_USER)"
+          echo "##[command]Image:    edupoint-frontend-prod:${VERSION_TAG}"
+          echo "##[command]Tag:      ${VERSION_TAG}"
+          echo "##[command]BuildId:  $(Build.BuildId)"
+          echo "##[command]SHA:      ${SHORT_SHA}"
+          echo "##[section]========================================"
+          docker images | grep edupoint-frontend-prod | head -3
+          
+          # Export version tag for CD pipeline
+          echo "##vso[task.setvariable variable=frontendVersionTag;isOutput=true]${VERSION_TAG}"
+
+  - job: BuildE2ETests
+    displayName: 'Build E2E Tests'
+    steps:
+    - checkout: self
+      displayName: 'Checkout repository'
+    
+    - task: Bash@3
+      displayName: 'Login to GitHub Container Registry'
+      inputs:
+        targetType: 'inline'
+        script: |
+          echo "$(GITHUB_PAT)" | docker login $(dockerRegistry) -u $(GITHUB_USER) --password-stdin
+
+    - task: Bash@3
+      displayName: 'Build and Push E2E Tests'
+      inputs:
+        targetType: 'inline'
+        script: |
+          cd e2e-tests
+          
+          # Extract short SHA for version tag
+          SHORT_SHA=$(echo $(Build.SourceVersion) | cut -c1-7)
+          VERSION_TAG="$(Build.BuildId)-${SHORT_SHA}"
+          echo "Building with version tag: ${VERSION_TAG}"
+          
+          # Create Dockerfile for E2E tests if it doesn't exist
+          if [ ! -f Dockerfile ]; then
+            cat > Dockerfile << 'DOCKERFILE_EOF'
+          FROM mcr.microsoft.com/playwright:v1.40.1-focal
+          
+          WORKDIR /app
+          
+          COPY package*.json ./
+          RUN npm ci
+          
+          COPY . .
+          
+          RUN npx playwright install chromium
+          
+          CMD ["npm", "test"]
+          DOCKERFILE_EOF
+          fi
+          
+          # Build E2E test image
+          docker build \
+            -t $(dockerRegistry)/$(GITHUB_USER)/edupoint-e2e-tests-prod:${VERSION_TAG} .
+          
+          # Test E2E image
+          echo "Testing E2E test image..."
+          docker run --rm \
+            $(dockerRegistry)/$(GITHUB_USER)/edupoint-e2e-tests-prod:${VERSION_TAG} \
+            npx playwright --version || exit 1
+          echo "✓ E2E test image test PASSED"
+          
+          # Push image
+          docker push $(dockerRegistry)/$(GITHUB_USER)/edupoint-e2e-tests-prod:${VERSION_TAG}
+          
+          # Verify what was pushed
+          echo "##[section]========================================"
+          echo "##[section]🧪 E2E TESTS IMAGE PUSHED SUCCESSFULLY"
+          echo "##[section]========================================"
+          echo "##[command]Registry: $(dockerRegistry)/$(GITHUB_USER)"
+          echo "##[command]Image:    edupoint-e2e-tests-prod:${VERSION_TAG}"
+          echo "##[command]Tag:      ${VERSION_TAG}"
+          echo "##[command]BuildId:  $(Build.BuildId)"
+          echo "##[command]SHA:      ${SHORT_SHA}"
+          echo "##[section]========================================"
+          docker images | grep edupoint-e2e-tests-prod | head -3
+          
+          # Export version tag for CD pipeline
+          echo "##vso[task.setvariable variable=e2eVersionTag;isOutput=true]${VERSION_TAG}"
+
+- stage: Summary
+  displayName: 'Build Summary'
+  dependsOn: BuildAll
+  condition: succeeded()
+  jobs:
+  - job: Summary
+    displayName: 'Display Build Summary'
+    steps:
+    - task: Bash@3
+      displayName: 'Build Summary'
+      inputs:
+        targetType: 'inline'
+        script: |
+          echo "=== Build Completed Successfully ==="
+          echo "Environment: $(environment)"
+          echo "Build ID: $(Build.BuildId)"
+          echo "Git SHA: $(Build.SourceVersion)"
+          SHORT_SHA=$(echo $(Build.SourceVersion) | cut -c1-7)
+          VERSION_TAG="$(Build.BuildId)-${SHORT_SHA}"
+          echo "Version Tag: ${VERSION_TAG}"
+          echo ""
+          echo "Built Images:"
+          echo "- $(dockerRegistry)/$(GITHUB_USER)/edupoint-backend-prod:${VERSION_TAG}"
+          echo "- $(dockerRegistry)/$(GITHUB_USER)/edupoint-frontend-prod:${VERSION_TAG}"
+          echo "- $(dockerRegistry)/$(GITHUB_USER)/edupoint-e2e-tests-prod:${VERSION_TAG}"
+          echo ""
+          echo "##vso[task.setvariable variable=deployVersionTag;isOutput=true]${VERSION_TAG}"
