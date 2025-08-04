@@ -13,7 +13,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  GITHUB_USER: ${{ github.repository_owner }}
+  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   build-backend:
@@ -44,7 +44,7 @@ jobs:
       id: meta
       uses: docker/metadata-action@v5
       with:
-        images: ${{ env.REGISTRY }}/${{ env.GITHUB_USER }}/edupoint-backend-prod
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/backend
         tags: |
           type=ref,event=branch
           type=ref,event=pr
@@ -97,7 +97,7 @@ jobs:
       id: meta
       uses: docker/metadata-action@v5
       with:
-        images: ${{ env.REGISTRY }}/${{ env.GITHUB_USER }}/edupoint-frontend-prod
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/frontend
         tags: |
           type=ref,event=branch
           type=ref,event=pr
@@ -146,7 +146,7 @@ jobs:
       id: meta
       uses: docker/metadata-action@v5
       with:
-        images: ${{ env.REGISTRY }}/${{ env.GITHUB_USER }}/edupoint-e2e-tests-prod
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/e2e-tests
         tags: |
           type=ref,event=branch
           type=ref,event=pr
@@ -198,6 +198,6 @@ jobs:
         echo "**Version Tag:** ${{ github.run_id }}-${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### Built Images:" >> $GITHUB_STEP_SUMMARY
-        echo "- 📦 **Backend:** \`${{ env.REGISTRY }}/${{ env.GITHUB_USER }}/edupoint-backend-prod\`" >> $GITHUB_STEP_SUMMARY
-        echo "- 🎨 **Frontend:** \`${{ env.REGISTRY }}/${{ env.GITHUB_USER }}/edupoint-frontend-prod\`" >> $GITHUB_STEP_SUMMARY
-        echo "- 🧪 **E2E Tests:** \`${{ env.REGISTRY }}/${{ env.GITHUB_USER }}/edupoint-e2e-tests-prod\`" >> $GITHUB_STEP_SUMMARY
+        echo "- 📦 **Backend:** \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/backend\`" >> $GITHUB_STEP_SUMMARY
+        echo "- 🎨 **Frontend:** \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/frontend\`" >> $GITHUB_STEP_SUMMARY
+        echo "- 🧪 **E2E Tests:** \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/e2e-tests\`" >> $GITHUB_STEP_SUMMARY

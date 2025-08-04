@@ -38,7 +38,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  GITHUB_USER: ${{ github.repository_owner }}
+  IMAGE_NAME: ${{ github.repository }}
   NAMESPACE: edupoint-prod
 
 jobs:
@@ -132,7 +132,7 @@ jobs:
         
         # Update image tag
         kustomize edit set image \
-          ghcr.io/${{ env.GITHUB_USER }}/edupoint-backend-prod=ghcr.io/${{ env.GITHUB_USER }}/edupoint-backend-prod:${{ steps.determine-tag.outputs.IMAGE_TAG }}
+          ghcr.io/rafeekpro/edupoint-backend-prod=ghcr.io/${{ env.IMAGE_NAME }}/backend:${{ steps.determine-tag.outputs.IMAGE_TAG }}
         
         # Build and apply
         kustomize build . | kubectl apply -f -
@@ -147,7 +147,7 @@ jobs:
         
         # Update image tag
         kustomize edit set image \
-          ghcr.io/${{ env.GITHUB_USER }}/edupoint-frontend-prod=ghcr.io/${{ env.GITHUB_USER }}/edupoint-frontend-prod:${{ steps.determine-tag.outputs.IMAGE_TAG }}
+          ghcr.io/rafeekpro/edupoint-frontend-prod=ghcr.io/${{ env.IMAGE_NAME }}/frontend:${{ steps.determine-tag.outputs.IMAGE_TAG }}
         
         # Build and apply
         kustomize build . | kubectl apply -f -
