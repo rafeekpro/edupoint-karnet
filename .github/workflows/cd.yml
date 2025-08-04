@@ -95,6 +95,15 @@ jobs:
         # Create .kube directory
         mkdir -p $HOME/.kube
         
+        # Check if secret exists and is not empty
+        if [ -z "${{ secrets.KUBECONFIG_BASE64 }}" ]; then
+          echo "ERROR: KUBECONFIG_BASE64 secret is empty or not set!"
+          exit 1
+        fi
+        
+        # Debug: Check length of the secret
+        echo "KUBECONFIG_BASE64 length: ${#KUBECONFIG_BASE64}"
+        
         # Create kubeconfig from secret
         echo "${{ secrets.KUBECONFIG_BASE64 }}" | base64 -d > $HOME/.kube/config
         chmod 600 $HOME/.kube/config
