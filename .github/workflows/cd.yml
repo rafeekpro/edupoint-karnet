@@ -105,7 +105,7 @@ jobs:
         fi
         
         # Debug: Check length of the secret
-        echo "KUBECONFIG_BASE64 length: ${#KUBECONFIG_BASE64}"
+        echo "KUBECONFIG_BASE64 length: $(echo -n '${{ secrets.KUBECONFIG_BASE64 }}' | wc -c)"
         
         # Create kubeconfig from secret
         echo "${{ secrets.KUBECONFIG_BASE64 }}" | base64 -d > $HOME/.kube/config
