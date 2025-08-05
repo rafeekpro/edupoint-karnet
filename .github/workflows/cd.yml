@@ -92,22 +92,32 @@ jobs:
     
     - name: Configure kubectl
       run: |
-        # Debug: Check current directory and files
-        pwd
-        ls -la
-        ls -la devops/ || echo "No devops directory"
-        ls -la devops/kubeconfig/ || echo "No kubeconfig directory"
-        
         # Create .kube directory
         mkdir -p $HOME/.kube
         
-        # Create kubeconfig from template
-        envsubst < devops/kubeconfig/kubeconfig-template.yaml > $HOME/.kube/config
+        # Create kubeconfig directly
+        cat > $HOME/.kube/config << EOF
+        apiVersion: v1
+        kind: Config
+        clusters:
+        - cluster:
+            certificate-authority-data: ${{ secrets.K8S_CA_CERT }}
+            server: https://10.0.0.4:6443
+          name: default
+        contexts:
+        - context:
+            cluster: default
+            user: default
+          name: default
+        current-context: default
+        users:
+        - name: default
+          user:
+            client-certificate-data: ${{ secrets.K8S_CLIENT_CERT }}
+            client-key-data: ${{ secrets.K8S_CLIENT_KEY }}
+        EOF
+        
         chmod 600 $HOME/.kube/config
-      env:
-        K8S_CA_CERT: ${{ secrets.K8S_CA_CERT }}
-        K8S_CLIENT_CERT: ${{ secrets.K8S_CLIENT_CERT }}
-        K8S_CLIENT_KEY: ${{ secrets.K8S_CLIENT_KEY }}
     
     - name: Test kubectl connection
       run: |
