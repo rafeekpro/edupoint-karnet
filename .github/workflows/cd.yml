@@ -65,6 +65,11 @@ jobs:
           echo "IMAGE_TAG=${{ github.run_id }}-${{ github.sha }}" >> $GITHUB_OUTPUT
         fi
     
+    - name: Install kubectl (before VPN)
+      run: |
+        sudo snap install kubectl --classic
+        kubectl version --client
+    
     - name: Install WireGuard
       run: |
         sudo apt-get update
@@ -84,16 +89,6 @@ jobs:
         
         # Test connectivity (adjust the IP to your Kubernetes API server)
         ping -c 3 ${{ secrets.K8S_API_SERVER_IP }} || echo "Ping failed, but continuing..."
-    
-    - name: Install kubectl
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y apt-transport-https ca-certificates curl
-        curl -fsSLo /usr/share/keyrings/kubernetes-archive-keyring.gpg https://packages.cloud.google.com/apt/doc/apt-key.gpg
-        echo "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list
-        sudo apt-get update
-        sudo apt-get install -y kubectl
-        kubectl version --client
     
     - name: Configure kubectl
       run: |
