@@ -102,8 +102,9 @@ jobs:
         K8S_CA_CERT: ${{ secrets.K8S_CA_CERT }}
         K8S_CLIENT_CERT: ${{ secrets.K8S_CLIENT_CERT }}
         K8S_CLIENT_KEY: ${{ secrets.K8S_CLIENT_KEY }}
-        
-        # Test connection
+    
+    - name: Test kubectl connection
+      run: |
         kubectl version --client
         kubectl cluster-info
         kubectl get namespaces
