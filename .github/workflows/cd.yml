@@ -92,6 +92,12 @@ jobs:
     
     - name: Configure kubectl
       run: |
+        # Debug: Check current directory and files
+        pwd
+        ls -la
+        ls -la devops/ || echo "No devops directory"
+        ls -la devops/kubeconfig/ || echo "No kubeconfig directory"
+        
         # Create .kube directory
         mkdir -p $HOME/.kube
         
