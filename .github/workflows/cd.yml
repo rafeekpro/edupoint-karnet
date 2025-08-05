@@ -102,7 +102,7 @@ jobs:
         clusters:
         - cluster:
             certificate-authority-data: ${{ secrets.K8S_CA_CERT }}
-            server: https://10.0.0.4:6443
+            server: https://10.204.200.1:6443
           name: default
         contexts:
         - context:
