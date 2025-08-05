@@ -119,6 +119,17 @@ jobs:
         
         chmod 600 $HOME/.kube/config
     
+    - name: Test network connectivity
+      run: |
+        echo "=== Network diagnostics ==="
+        ip addr show
+        ip route show
+        echo "=== Testing connectivity ==="
+        ping -c 3 10.204.200.1 || echo "Cannot ping VPN gateway"
+        ping -c 3 10.0.0.4 || echo "Cannot ping K8s API"
+        nc -zv 10.0.0.4 6443 || echo "Cannot connect to K8s API port"
+        curl -k https://10.0.0.4:6443/version || echo "Cannot reach K8s API"
+    
     - name: Test kubectl connection
       run: |
         kubectl version --client
