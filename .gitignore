@@ -1,0 +1,23 @@
+# WireGuard keys
+privatekey
+publickey
+*-privatekey
+*-publickey
+*.key
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# Kubernetes configs
+kubeconfig*
+*.kubeconfig
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
