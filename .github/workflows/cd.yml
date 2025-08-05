@@ -92,24 +92,16 @@ jobs:
     
     - name: Configure kubectl
       run: |
-        # Add route to access K8s API via 10.0.0.4
-        sudo ip route add 10.0.0.4/32 via 10.204.200.1 dev wg0
-        
         # Create .kube directory
         mkdir -p $HOME/.kube
         
-        # Check if secret exists and is not empty
-        if [ -z "${{ secrets.KUBECONFIG_BASE64 }}" ]; then
-          echo "ERROR: KUBECONFIG_BASE64 secret is empty or not set!"
-          exit 1
-        fi
-        
-        # Debug: Check length of the secret
-        echo "KUBECONFIG_BASE64 length: $(echo -n '${{ secrets.KUBECONFIG_BASE64 }}' | wc -c)"
-        
-        # Create kubeconfig from secret
-        echo "${{ secrets.KUBECONFIG_BASE64 }}" | base64 -d > $HOME/.kube/config
+        # Create kubeconfig from template
+        envsubst < devops/kubeconfig/kubeconfig-template.yaml > $HOME/.kube/config
         chmod 600 $HOME/.kube/config
+      env:
+        K8S_CA_CERT: ${{ secrets.K8S_CA_CERT }}
+        K8S_CLIENT_CERT: ${{ secrets.K8S_CLIENT_CERT }}
+        K8S_CLIENT_KEY: ${{ secrets.K8S_CLIENT_KEY }}
         
         # Test connection
         kubectl version --client
