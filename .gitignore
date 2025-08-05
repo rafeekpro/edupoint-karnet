@@ -13,6 +13,7 @@ publickey
 # Kubernetes configs
 kubeconfig*
 *.kubeconfig
+!devops/kubeconfig/kubeconfig-template.yaml
 
 # Logs
 *.log
