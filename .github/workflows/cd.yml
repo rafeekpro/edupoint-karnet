@@ -55,14 +55,16 @@ jobs:
       id: determine-tag
       run: |
         if [ "${{ github.event_name }}" == "workflow_run" ]; then
-          # Get the tag from the CI workflow run
-          echo "IMAGE_TAG=${{ github.event.workflow_run.id }}-${{ github.event.workflow_run.head_sha }}" >> $GITHUB_OUTPUT
+          # Get the tag from the CI workflow run (use short SHA)
+          SHORT_SHA=$(echo "${{ github.event.workflow_run.head_sha }}" | cut -c1-7)
+          echo "IMAGE_TAG=${{ github.event.workflow_run.id }}-${SHORT_SHA}" >> $GITHUB_OUTPUT
         elif [ -n "${{ inputs.image-tag }}" ]; then
           # Use the provided tag
           echo "IMAGE_TAG=${{ inputs.image-tag }}" >> $GITHUB_OUTPUT
         else
-          # Use latest from main
-          echo "IMAGE_TAG=${{ github.run_id }}-${{ github.sha }}" >> $GITHUB_OUTPUT
+          # Use latest from main (use short SHA)
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          echo "IMAGE_TAG=${{ github.run_id }}-${SHORT_SHA}" >> $GITHUB_OUTPUT
         fi
     
     - name: Install kubectl (fast)
@@ -179,6 +181,9 @@ jobs:
       run: |
         cd devops/kubernetes/overlays/prod
         
+        # Debug: Show available images
+        echo "Looking for image tag: ${{ steps.determine-tag.outputs.IMAGE_TAG }}"
+        
         # Update image tag
         kustomize edit set image \
           ghcr.io/rafeekpro/edupoint-backend-prod=ghcr.io/${{ env.IMAGE_NAME }}/backend:${{ steps.determine-tag.outputs.IMAGE_TAG }}
@@ -201,6 +206,9 @@ jobs:
       if: ${{ (github.event_name == 'workflow_dispatch' && inputs.deploy-frontend) || github.event_name == 'workflow_run' }}
       run: |
         cd devops/kubernetes/overlays/prod
+        
+        # Debug: Show available images
+        echo "Looking for image tag: ${{ steps.determine-tag.outputs.IMAGE_TAG }}"
         
         # Update image tag
         kustomize edit set image \
