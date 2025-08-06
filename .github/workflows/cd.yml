@@ -65,9 +65,11 @@ jobs:
           echo "IMAGE_TAG=${{ github.run_id }}-${{ github.sha }}" >> $GITHUB_OUTPUT
         fi
     
-    - name: Install kubectl (before VPN)
+    - name: Install kubectl (fast)
       run: |
-        sudo snap install kubectl --classic
+        curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+        chmod +x ./kubectl
+        sudo mv ./kubectl /usr/local/bin/kubectl
         kubectl version --client
     
     - name: Install WireGuard
