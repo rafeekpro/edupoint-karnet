@@ -89,8 +89,8 @@ jobs:
         # Verify connection
         sudo wg show
         
-        # Test connectivity (adjust the IP to your Kubernetes API server)
-        ping -c 3 ${{ secrets.K8S_API_SERVER_IP }} || echo "Ping failed, but continuing..."
+        # Test connectivity
+        ping -c 3 10.204.200.1 || echo "Cannot ping VPN gateway"
     
     - name: Configure kubectl
       run: |
@@ -104,6 +104,7 @@ jobs:
         clusters:
         - cluster:
             certificate-authority-data: ${{ secrets.K8S_CA_CERT }}
+            insecure-skip-tls-verify: true
             # Użyj adresu IP serwera K8s dostępnego przez VPN
             server: https://10.204.200.1:6443
           name: default
@@ -116,8 +117,7 @@ jobs:
         users:
         - name: default
           user:
-            client-certificate-data: ${{ secrets.K8S_CLIENT_CERT }}
-            client-key-data: ${{ secrets.K8S_CLIENT_KEY }}
+            token: ${{ secrets.K8S_SERVICE_ACCOUNT_TOKEN }}
         EOF
         
         chmod 600 $HOME/.kube/config
