@@ -40,7 +40,7 @@ spec:
       - "Content-Type"
     accessControlAllowOriginList:
       - "https://karnet.edupoint.pl"
-      - "https://karnet-dev.edupoint.pl"
+      - "https://www.karnet.edupoint.pl"
       - "http://localhost:3000"
     accessControlMaxAge: 100
     addVaryHeader: true
