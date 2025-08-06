@@ -153,6 +153,16 @@ jobs:
           --docker-password=${{ secrets.GITHUB_TOKEN }} \
           --dry-run=client -o yaml | kubectl apply -f -
     
+    - name: Install Traefik CRDs
+      run: |
+        # Check if Traefik CRDs are installed
+        if ! kubectl get crd middlewares.traefik.containo.us > /dev/null 2>&1; then
+          echo "Installing Traefik CRDs..."
+          kubectl apply -f https://raw.githubusercontent.com/traefik/traefik/v2.10/docs/content/reference/dynamic-configuration/kubernetes-crd-definition-v1.yml
+        else
+          echo "Traefik CRDs already installed"
+        fi
+    
     - name: Create application secrets
       run: |
         kubectl delete secret edupoint-prod-secrets \
