@@ -155,11 +155,14 @@ jobs:
     
     - name: Create application secrets
       run: |
+        kubectl delete secret edupoint-prod-secrets \
+          --namespace=${{ env.NAMESPACE }} \
+          --ignore-not-found=true
+        
         kubectl create secret generic edupoint-prod-secrets \
           --namespace=${{ env.NAMESPACE }} \
           --from-literal=db-password=${{ secrets.DB_PASSWORD_PROD }} \
-          --from-literal=jwt-secret=${{ secrets.JWT_SECRET_KEY_PROD }} \
-          --dry-run=client -o yaml | kubectl apply -f -
+          --from-literal=jwt-secret=${{ secrets.JWT_SECRET_KEY_PROD }}
     
     - name: Deploy Backend
       if: ${{ (github.event_name == 'workflow_dispatch' && inputs.deploy-backend) || github.event_name == 'workflow_run' }}
