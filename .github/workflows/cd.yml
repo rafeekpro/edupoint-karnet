@@ -141,12 +141,9 @@ jobs:
         kubectl version --client
         # Teraz powinno działać, bo adres w kubeconfig jest poprawny
         kubectl cluster-info
-        kubectl get namespaces
-        
-        - name: Create/Update namespace
-          run: |
-            kubectl create namespace ${{ env.NAMESPACE }} --dry-run=client -o yaml | kubectl apply -f -
-    
+        kubectl get namespaces 
+
+
     - name: Create GitHub Container Registry secret
       run: |
         kubectl create secret docker-registry ghcr-secret \
