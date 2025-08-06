@@ -21,14 +21,14 @@ spec:
               key: jwt-secret
         livenessProbe:
           httpGet:
-            path: /health
+            path: /
             port: 8000
           initialDelaySeconds: 60
           periodSeconds: 30
           timeoutSeconds: 10
         readinessProbe:
           httpGet:
-            path: /health
+            path: /
             port: 8000
           initialDelaySeconds: 30
           periodSeconds: 10
