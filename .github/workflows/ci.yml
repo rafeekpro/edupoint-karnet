@@ -1,4 +1,4 @@
-name: CI - Build and Push Images
+name: 🔨 CI - Build and Push Images
 
 on:
   push:
@@ -17,7 +17,7 @@ env:
 
 jobs:
   build-backend:
-    name: Build Backend API
+    name: 🎯 Build Backend API
     runs-on: ubuntu-latest
     outputs:
       version-tag: ${{ steps.meta.outputs.version }}
@@ -27,20 +27,32 @@ jobs:
       id-token: write
     
     steps:
-    - name: Checkout repository
+    # ===========================================
+    # 📦 SETUP: Repository and Build Environment
+    # ===========================================
+    
+    - name: 📦 Checkout repository
       uses: actions/checkout@v4
     
-    - name: Set up Docker Buildx
+    - name: 🔧 Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
     
-    - name: Log in to GitHub Container Registry
+    # ===========================================
+    # 🔐 AUTHENTICATION: Container Registry
+    # ===========================================
+    
+    - name: 🔐 Log in to GitHub Container Registry
       uses: docker/login-action@v3
       with:
         registry: ${{ env.REGISTRY }}
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
     
-    - name: Extract metadata
+    # ===========================================
+    # 🏷️ METADATA: Version Tags and Labels
+    # ===========================================
+    
+    - name: 🏷️ Extract metadata
       id: meta
       uses: docker/metadata-action@v5
       with:
@@ -51,7 +63,11 @@ jobs:
           type=sha,prefix={{branch}}-
           type=raw,value=${{ github.run_id }}-{{sha}}
     
-    - name: Build and push Backend API
+    # ===========================================
+    # 🚀 BUILD: Docker Image
+    # ===========================================
+    
+    - name: 🚀 Build and push Backend API
       uses: docker/build-push-action@v5
       with:
         context: ./backend
@@ -70,7 +86,7 @@ jobs:
           ENVIRONMENT=production
 
   build-frontend:
-    name: Build React Frontend
+    name: 🌐 Build React Frontend
     runs-on: ubuntu-latest
     outputs:
       version-tag: ${{ steps.meta.outputs.version }}
@@ -80,20 +96,32 @@ jobs:
       id-token: write
     
     steps:
-    - name: Checkout repository
+    # ===========================================
+    # 📦 SETUP: Repository and Build Environment
+    # ===========================================
+    
+    - name: 📦 Checkout repository
       uses: actions/checkout@v4
     
-    - name: Set up Docker Buildx
+    - name: 🔧 Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
     
-    - name: Log in to GitHub Container Registry
+    # ===========================================
+    # 🔐 AUTHENTICATION: Container Registry
+    # ===========================================
+    
+    - name: 🔐 Log in to GitHub Container Registry
       uses: docker/login-action@v3
       with:
         registry: ${{ env.REGISTRY }}
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
     
-    - name: Extract metadata
+    # ===========================================
+    # 🏷️ METADATA: Version Tags and Labels
+    # ===========================================
+    
+    - name: 🏷️ Extract metadata
       id: meta
       uses: docker/metadata-action@v5
       with:
@@ -104,7 +132,11 @@ jobs:
           type=sha,prefix={{branch}}-
           type=raw,value=${{ github.run_id }}-{{sha}}
     
-    - name: Build and push Frontend
+    # ===========================================
+    # 🚀 BUILD: Docker Image
+    # ===========================================
+    
+    - name: 🚀 Build and push Frontend
       uses: docker/build-push-action@v5
       with:
         context: ./frontend
@@ -119,7 +151,7 @@ jobs:
           REACT_APP_ENVIRONMENT=production
 
   build-e2e-tests:
-    name: Build E2E Tests
+    name: 🧪 Build E2E Tests
     runs-on: ubuntu-latest
     outputs:
       version-tag: ${{ steps.meta.outputs.version }}
@@ -129,20 +161,32 @@ jobs:
       id-token: write
     
     steps:
-    - name: Checkout repository
+    # ===========================================
+    # 📦 SETUP: Repository and Build Environment
+    # ===========================================
+    
+    - name: 📦 Checkout repository
       uses: actions/checkout@v4
     
-    - name: Set up Docker Buildx
+    - name: 🔧 Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
     
-    - name: Log in to GitHub Container Registry
+    # ===========================================
+    # 🔐 AUTHENTICATION: Container Registry
+    # ===========================================
+    
+    - name: 🔐 Log in to GitHub Container Registry
       uses: docker/login-action@v3
       with:
         registry: ${{ env.REGISTRY }}
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
     
-    - name: Extract metadata
+    # ===========================================
+    # 🏷️ METADATA: Version Tags and Labels
+    # ===========================================
+    
+    - name: 🏷️ Extract metadata
       id: meta
       uses: docker/metadata-action@v5
       with:
@@ -172,7 +216,11 @@ jobs:
         EOF
         fi
     
-    - name: Build and push E2E Tests
+    # ===========================================
+    # 🚀 BUILD: Docker Image
+    # ===========================================
+    
+    - name: 🚀 Build and push E2E Tests
       uses: docker/build-push-action@v5
       with:
         context: ./e2e-tests
