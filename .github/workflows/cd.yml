@@ -104,8 +104,8 @@ jobs:
         clusters:
         - cluster:
             certificate-authority-data: ${{ secrets.K8S_CA_CERT }}
-            # Użyj poprawnego adresu IP z certyfikatu
-            server: https://10.0.0.4:6443
+            # Użyj adresu IP serwera K8s dostępnego przez VPN
+            server: https://10.204.200.1:6443
           name: default
         contexts:
         - context:
@@ -128,13 +128,12 @@ jobs:
         ip addr show
         ip route show
         echo "=== Testing connectivity ==="
-        # Upewnij się, że pingujesz poprawny adres IP serwera WireGuard
+        # Test połączenia VPN
         ping -c 3 10.204.200.1 || echo "Cannot ping VPN gateway"
-        # Upewnij się, że pingujesz poprawny adres IP serwera K8s
-        ping -c 3 10.0.0.4 || echo "Cannot ping K8s API"
-        nc -zv 10.0.0.4 6443 || echo "Cannot connect to K8s API port"
-        # Dodaj -k, aby pominąć błędy certyfikatu podczas testowania
-        curl -k https://10.0.0.4:6443/version || echo "Cannot reach K8s API"
+        # Test połączenia z serwerem K8s przez VPN
+        nc -zv 10.204.200.1 6443 || echo "Cannot connect to K8s API port"
+        # Test API K8s z opcją -k, aby pominąć błędy certyfikatu
+        curl -k https://10.204.200.1:6443/version || echo "Cannot reach K8s API"
 
     - name: Test kubectl connection
       run: |
