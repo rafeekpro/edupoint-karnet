@@ -13,12 +13,12 @@ spec:
           valueFrom:
             secretKeyRef:
               name: edupoint-prod-secrets
-              key: db-password
+              key: DB_PASSWORD
         - name: JWT_SECRET_KEY
           valueFrom:
             secretKeyRef:
               name: edupoint-prod-secrets
-              key: jwt-secret
+              key: JWT_SECRET_KEY
         livenessProbe:
           httpGet:
             path: /

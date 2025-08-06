@@ -170,6 +170,13 @@ jobs:
     # 🚀 DEPLOYMENT PREPARATION
     # ===========================================
     
+    - name: 🔐 Login to GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    
     - name: 🔒 Create GitHub Container Registry secret
       run: |
         kubectl create secret docker-registry ghcr-secret \
@@ -197,8 +204,8 @@ jobs:
         
         kubectl create secret generic edupoint-prod-secrets \
           --namespace=${{ env.NAMESPACE }} \
-          --from-literal=db-password="${{ secrets.DB_PASSWORD_PROD }}" \
-          --from-literal=jwt-secret="${{ secrets.JWT_SECRET_KEY_PROD }}"
+          --from-literal=DB_PASSWORD="${{ secrets.DB_PASSWORD_PROD }}" \
+          --from-literal=JWT_SECRET_KEY="${{ secrets.JWT_SECRET_KEY_PROD }}"
     
     # ===========================================
     # 🎯 BACKEND DEPLOYMENT
@@ -212,9 +219,22 @@ jobs:
         # Debug: Show available images
         echo "Looking for image tag: ${{ steps.determine-tag.outputs.IMAGE_TAG }}"
         
+        # Verify image exists in registry
+        IMAGE_URL="ghcr.io/${{ env.IMAGE_NAME }}/backend:${{ steps.determine-tag.outputs.IMAGE_TAG }}"
+        echo "Verifying image: $IMAGE_URL"
+        docker manifest inspect $IMAGE_URL || {
+          echo "ERROR: Image not found in registry!"
+          echo "Available tags for backend:"
+          gh api \
+            -H "Accept: application/vnd.github+json" \
+            /user/packages/container/edupoint-karnet%2Fbackend/versions \
+            --jq '.[0:5] | .[] | .metadata.container.tags[]' || true
+          exit 1
+        }
+        
         # Update image tag
         kustomize edit set image \
-          ghcr.io/rafeekpro/edupoint-backend-prod=ghcr.io/${{ env.IMAGE_NAME }}/backend:${{ steps.determine-tag.outputs.IMAGE_TAG }}
+          ghcr.io/rafeekpro/edupoint-backend-prod=$IMAGE_URL
         
         # Build and apply
         kustomize build . | kubectl apply -f -
@@ -242,9 +262,22 @@ jobs:
         # Debug: Show available images
         echo "Looking for image tag: ${{ steps.determine-tag.outputs.IMAGE_TAG }}"
         
+        # Verify image exists in registry
+        IMAGE_URL="ghcr.io/${{ env.IMAGE_NAME }}/frontend:${{ steps.determine-tag.outputs.IMAGE_TAG }}"
+        echo "Verifying image: $IMAGE_URL"
+        docker manifest inspect $IMAGE_URL || {
+          echo "ERROR: Image not found in registry!"
+          echo "Available tags for frontend:"
+          gh api \
+            -H "Accept: application/vnd.github+json" \
+            /user/packages/container/edupoint-karnet%2Ffrontend/versions \
+            --jq '.[0:5] | .[] | .metadata.container.tags[]' || true
+          exit 1
+        }
+        
         # Update image tag
         kustomize edit set image \
-          ghcr.io/rafeekpro/edupoint-frontend-prod=ghcr.io/${{ env.IMAGE_NAME }}/frontend:${{ steps.determine-tag.outputs.IMAGE_TAG }}
+          ghcr.io/rafeekpro/edupoint-frontend-prod=$IMAGE_URL
         
         # Build and apply
         kustomize build . | kubectl apply -f -
