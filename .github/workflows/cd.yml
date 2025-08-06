@@ -117,7 +117,8 @@ jobs:
         users:
         - name: default
           user:
-            token: ${{ secrets.K8S_SERVICE_ACCOUNT_TOKEN }}
+            client-certificate-data: ${{ secrets.K8S_CLIENT_CERT }}
+            client-key-data: ${{ secrets.K8S_CLIENT_KEY }}
         EOF
         
         chmod 600 $HOME/.kube/config
