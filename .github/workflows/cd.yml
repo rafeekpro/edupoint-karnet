@@ -186,8 +186,16 @@ jobs:
         # Build and apply
         kustomize build . | kubectl apply -f -
         
-        # Wait for rollout
-        kubectl rollout status deployment/edupoint-backend -n ${{ env.NAMESPACE }} --timeout=300s
+        # Wait for rollout with debug info
+        kubectl rollout status deployment/edupoint-backend -n ${{ env.NAMESPACE }} --timeout=300s || {
+          echo "Deployment failed, checking pod status..."
+          kubectl get pods -n ${{ env.NAMESPACE }} -l app=edupoint-backend
+          echo "Checking pod events..."
+          kubectl describe pods -n ${{ env.NAMESPACE }} -l app=edupoint-backend | tail -50
+          echo "Checking pod logs..."
+          kubectl logs -n ${{ env.NAMESPACE }} -l app=edupoint-backend --tail=50 || true
+          exit 1
+        }
     
     - name: Deploy Frontend
       if: ${{ (github.event_name == 'workflow_dispatch' && inputs.deploy-frontend) || github.event_name == 'workflow_run' }}
@@ -201,8 +209,16 @@ jobs:
         # Build and apply
         kustomize build . | kubectl apply -f -
         
-        # Wait for rollout
-        kubectl rollout status deployment/edupoint-frontend -n ${{ env.NAMESPACE }} --timeout=300s
+        # Wait for rollout with debug info
+        kubectl rollout status deployment/edupoint-frontend -n ${{ env.NAMESPACE }} --timeout=300s || {
+          echo "Deployment failed, checking pod status..."
+          kubectl get pods -n ${{ env.NAMESPACE }} -l app=edupoint-frontend
+          echo "Checking pod events..."
+          kubectl describe pods -n ${{ env.NAMESPACE }} -l app=edupoint-frontend | tail -50
+          echo "Checking pod logs..."
+          kubectl logs -n ${{ env.NAMESPACE }} -l app=edupoint-frontend --tail=50 || true
+          exit 1
+        }
     
     - name: Verify deployment
       run: |
