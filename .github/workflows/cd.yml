@@ -161,8 +161,8 @@ jobs:
         
         kubectl create secret generic edupoint-prod-secrets \
           --namespace=${{ env.NAMESPACE }} \
-          --from-literal=db-password=${{ secrets.DB_PASSWORD_PROD }} \
-          --from-literal=jwt-secret=${{ secrets.JWT_SECRET_KEY_PROD }}
+          --from-literal=db-password="${{ secrets.DB_PASSWORD_PROD }}" \
+          --from-literal=jwt-secret="${{ secrets.JWT_SECRET_KEY_PROD }}"
     
     - name: Deploy Backend
       if: ${{ (github.event_name == 'workflow_dispatch' && inputs.deploy-backend) || github.event_name == 'workflow_run' }}
