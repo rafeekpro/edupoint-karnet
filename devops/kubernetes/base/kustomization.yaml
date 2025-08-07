@@ -21,10 +21,7 @@ configMapGenerator:
       - DB_PORT=5432
       - DB_NAME=therapy_system
 
-secretGenerator:
-  - name: edupoint-secrets
-    literals:
-      - DB_PASSWORD=changeme
-      - JWT_SECRET_KEY=changeme
+# Secrets are created by GitHub Actions workflow
+# secretGenerator removed to avoid conflicts
 
 # Images will be configured in overlays

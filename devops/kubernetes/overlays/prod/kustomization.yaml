@@ -6,7 +6,7 @@ namespace: edupoint-prod
 resources:
   - ../../base
 
-patchesStrategicMerge:
+patches:
   - deployment-patches.yaml
 
 configMapGenerator:
@@ -16,11 +16,8 @@ configMapGenerator:
       - ENVIRONMENT=production
       - DB_NAME=therapy_system_prod
 
-secretGenerator:
-  - name: edupoint-prod-secrets
-    literals:
-      - DB_PASSWORD=$(DB_PASSWORD_PROD)
-      - JWT_SECRET_KEY=$(JWT_SECRET_KEY)
+# Secret is created by GitHub Actions workflow
+# secretGenerator removed to avoid conflicts
 
 images:
   - name: ghcr.io/rafeekpro/edupoint-backend-prod
@@ -28,17 +25,4 @@ images:
   - name: ghcr.io/rafeekpro/edupoint-frontend-prod
     newTag: $(IMAGE_TAG)
 
-replacements:
-  - source:
-      fieldPath: data.DB_PASSWORD
-      kind: Secret
-      name: edupoint-prod-secrets
-    targets:
-      - fieldPaths:
-          - spec.template.spec.containers.[name=backend].env.[name=DATABASE_URL].value
-        options:
-          delimiter: ':'
-          index: 2
-        select:
-          kind: Deployment
-          name: edupoint-backend
+# Replacements removed - handled directly in deployment patches

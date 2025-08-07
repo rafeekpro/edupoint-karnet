@@ -44,12 +44,12 @@ spec:
         - name: DB_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: edupoint-secrets
+              name: edupoint-prod-secrets
               key: DB_PASSWORD
         - name: JWT_SECRET_KEY
           valueFrom:
             secretKeyRef:
-              name: edupoint-secrets
+              name: edupoint-prod-secrets
               key: JWT_SECRET_KEY
         - name: ENVIRONMENT
           valueFrom:
