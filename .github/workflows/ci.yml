@@ -53,15 +53,19 @@ jobs:
     # 📦 SETUP: Repository and Build Environment
     # ===========================================
     
-    - name: 🔧 Fix DNS Resolution
+    - name: 🔧 Fix Docker DNS Resolution
       run: |
-        # Fix potential DNS issues on GitHub runners
-        echo "nameserver 8.8.8.8" | sudo tee /etc/resolv.conf > /dev/null
-        echo "nameserver 8.8.4.4" | sudo tee -a /etc/resolv.conf > /dev/null
-        echo "nameserver 1.1.1.1" | sudo tee -a /etc/resolv.conf > /dev/null
+        # Configure Docker to use Google DNS
+        echo '{"dns": ["8.8.8.8", "8.8.4.4"]}' | sudo tee /etc/docker/daemon.json > /dev/null
         
-        # Test DNS resolution
-        nslookup ghcr.io || echo "DNS resolution might have issues"
+        # Restart Docker to apply DNS changes
+        sudo systemctl restart docker
+        
+        # Wait for Docker to be ready
+        sleep 5
+        
+        # Verify Docker is running
+        docker version
     
     - name: 📦 Checkout repository
       uses: actions/checkout@v4
@@ -133,15 +137,19 @@ jobs:
     # 📦 SETUP: Repository and Build Environment
     # ===========================================
     
-    - name: 🔧 Fix DNS Resolution
+    - name: 🔧 Fix Docker DNS Resolution
       run: |
-        # Fix potential DNS issues on GitHub runners
-        echo "nameserver 8.8.8.8" | sudo tee /etc/resolv.conf > /dev/null
-        echo "nameserver 8.8.4.4" | sudo tee -a /etc/resolv.conf > /dev/null
-        echo "nameserver 1.1.1.1" | sudo tee -a /etc/resolv.conf > /dev/null
+        # Configure Docker to use Google DNS
+        echo '{"dns": ["8.8.8.8", "8.8.4.4"]}' | sudo tee /etc/docker/daemon.json > /dev/null
         
-        # Test DNS resolution
-        nslookup ghcr.io || echo "DNS resolution might have issues"
+        # Restart Docker to apply DNS changes
+        sudo systemctl restart docker
+        
+        # Wait for Docker to be ready
+        sleep 5
+        
+        # Verify Docker is running
+        docker version
     
     - name: 📦 Checkout repository
       uses: actions/checkout@v4
@@ -209,15 +217,19 @@ jobs:
     # 📦 SETUP: Repository and Build Environment
     # ===========================================
     
-    - name: 🔧 Fix DNS Resolution
+    - name: 🔧 Fix Docker DNS Resolution
       run: |
-        # Fix potential DNS issues on GitHub runners
-        echo "nameserver 8.8.8.8" | sudo tee /etc/resolv.conf > /dev/null
-        echo "nameserver 8.8.4.4" | sudo tee -a /etc/resolv.conf > /dev/null
-        echo "nameserver 1.1.1.1" | sudo tee -a /etc/resolv.conf > /dev/null
+        # Configure Docker to use Google DNS
+        echo '{"dns": ["8.8.8.8", "8.8.4.4"]}' | sudo tee /etc/docker/daemon.json > /dev/null
         
-        # Test DNS resolution
-        nslookup ghcr.io || echo "DNS resolution might have issues"
+        # Restart Docker to apply DNS changes
+        sudo systemctl restart docker
+        
+        # Wait for Docker to be ready
+        sleep 5
+        
+        # Verify Docker is running
+        docker version
     
     - name: 📦 Checkout repository
       uses: actions/checkout@v4

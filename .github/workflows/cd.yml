@@ -52,15 +52,22 @@ jobs:
     # 📦 SETUP: Repository and Dependencies
     # ===========================================
     
-    - name: 🔧 Fix DNS Resolution
+    - name: 🔧 Fix Docker DNS Resolution
       run: |
-        # Fix potential DNS issues on GitHub runners
-        echo "nameserver 8.8.8.8" | sudo tee /etc/resolv.conf > /dev/null
-        echo "nameserver 8.8.4.4" | sudo tee -a /etc/resolv.conf > /dev/null
-        echo "nameserver 1.1.1.1" | sudo tee -a /etc/resolv.conf > /dev/null
+        # Configure Docker to use Google DNS
+        echo '{"dns": ["8.8.8.8", "8.8.4.4"]}' | sudo tee /etc/docker/daemon.json > /dev/null
+        
+        # Restart Docker to apply DNS changes
+        sudo systemctl restart docker
+        
+        # Wait for Docker to be ready
+        sleep 5
+        
+        # Verify Docker is running
+        docker version
         
         # Test DNS resolution
-        nslookup ghcr.io || echo "DNS resolution might have issues"
+        docker run --rm alpine nslookup ghcr.io
     
     - name: 📦 Checkout repository
       uses: actions/checkout@v4
@@ -183,27 +190,11 @@ jobs:
     # ===========================================
     
     - name: 🔐 Login to GitHub Container Registry
-      run: |
-        # Retry logic for DNS issues
-        for attempt in 1 2 3; do
-          echo "Login attempt $attempt..."
-          
-          # Try to resolve DNS first
-          nslookup ghcr.io 8.8.8.8 || nslookup ghcr.io 1.1.1.1 || true
-          
-          # Try docker login with timeout
-          if echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin; then
-            echo "✅ Successfully logged in to ghcr.io"
-            break
-          else
-            if [ $attempt -eq 3 ]; then
-              echo "❌ Failed to login after 3 attempts"
-              exit 1
-            fi
-            echo "⚠️ Login failed, waiting 10 seconds before retry..."
-            sleep 10
-          fi
-        done
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
     
     - name: 🔒 Create GitHub Container Registry secret
       run: |
