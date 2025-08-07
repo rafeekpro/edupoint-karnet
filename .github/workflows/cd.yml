@@ -225,20 +225,38 @@ jobs:
         IMAGE_URL="ghcr.io/${{ env.IMAGE_NAME }}/backend:${{ steps.determine-tag.outputs.IMAGE_TAG }}"
         echo "Verifying image: $IMAGE_URL"
         
-        # If specific tag doesn't exist, try 'main' tag
+        # Check if image exists
         if ! docker manifest inspect $IMAGE_URL 2>/dev/null; then
-          echo "⚠️ Image tag not found, trying 'main' tag..."
-          IMAGE_URL="ghcr.io/${{ env.IMAGE_NAME }}/backend:main"
-          if ! docker manifest inspect $IMAGE_URL 2>/dev/null; then
-            echo "ERROR: No suitable image found!"
-            echo "Available tags for backend:"
-            gh api \
-              -H "Accept: application/vnd.github+json" \
-              /user/packages/container/edupoint-karnet%2Fbackend/versions \
-              --jq '.[0:5] | .[] | .metadata.container.tags[]' 2>/dev/null || echo "Could not fetch tags"
+          echo "⚠️ Image with tag '${{ steps.determine-tag.outputs.IMAGE_TAG }}' not found!"
+          echo "Available tags for backend:"
+          AVAILABLE_TAGS=$(gh api \
+            -H "Accept: application/vnd.github+json" \
+            /user/packages/container/edupoint-karnet%2Fbackend/versions \
+            --jq '.[0:10] | .[] | .metadata.container.tags | join(", ")' 2>/dev/null || echo "")
+          
+          if [ -n "$AVAILABLE_TAGS" ]; then
+            echo "$AVAILABLE_TAGS"
+            # Try to use the first available tag
+            FIRST_TAG=$(echo "$AVAILABLE_TAGS" | cut -d',' -f1 | tr -d ' ')
+            if [ -n "$FIRST_TAG" ]; then
+              IMAGE_URL="ghcr.io/${{ env.IMAGE_NAME }}/backend:$FIRST_TAG"
+              echo "📦 Trying first available tag: $FIRST_TAG"
+              if docker manifest inspect $IMAGE_URL 2>/dev/null; then
+                echo "✅ Using available tag: $FIRST_TAG"
+              else
+                echo "ERROR: Could not use available tag!"
+                exit 1
+              fi
+            else
+              echo "ERROR: No tags found!"
+              exit 1
+            fi
+          else
+            echo "ERROR: Could not fetch available tags!"
             exit 1
           fi
-          echo "✅ Using main tag: $IMAGE_URL"
+        else
+          echo "✅ Image found and verified!"
         fi
         
         # Clean up old resources
@@ -280,20 +298,38 @@ jobs:
         IMAGE_URL="ghcr.io/${{ env.IMAGE_NAME }}/frontend:${{ steps.determine-tag.outputs.IMAGE_TAG }}"
         echo "Verifying image: $IMAGE_URL"
         
-        # If specific tag doesn't exist, try 'main' tag
+        # Check if image exists
         if ! docker manifest inspect $IMAGE_URL 2>/dev/null; then
-          echo "⚠️ Image tag not found, trying 'main' tag..."
-          IMAGE_URL="ghcr.io/${{ env.IMAGE_NAME }}/frontend:main"
-          if ! docker manifest inspect $IMAGE_URL 2>/dev/null; then
-            echo "ERROR: No suitable image found!"
-            echo "Available tags for frontend:"
-            gh api \
-              -H "Accept: application/vnd.github+json" \
-              /user/packages/container/edupoint-karnet%2Ffrontend/versions \
-              --jq '.[0:5] | .[] | .metadata.container.tags[]' 2>/dev/null || echo "Could not fetch tags"
+          echo "⚠️ Image with tag '${{ steps.determine-tag.outputs.IMAGE_TAG }}' not found!"
+          echo "Available tags for frontend:"
+          AVAILABLE_TAGS=$(gh api \
+            -H "Accept: application/vnd.github+json" \
+            /user/packages/container/edupoint-karnet%2Ffrontend/versions \
+            --jq '.[0:10] | .[] | .metadata.container.tags | join(", ")' 2>/dev/null || echo "")
+          
+          if [ -n "$AVAILABLE_TAGS" ]; then
+            echo "$AVAILABLE_TAGS"
+            # Try to use the first available tag
+            FIRST_TAG=$(echo "$AVAILABLE_TAGS" | cut -d',' -f1 | tr -d ' ')
+            if [ -n "$FIRST_TAG" ]; then
+              IMAGE_URL="ghcr.io/${{ env.IMAGE_NAME }}/frontend:$FIRST_TAG"
+              echo "📦 Trying first available tag: $FIRST_TAG"
+              if docker manifest inspect $IMAGE_URL 2>/dev/null; then
+                echo "✅ Using available tag: $FIRST_TAG"
+              else
+                echo "ERROR: Could not use available tag!"
+                exit 1
+              fi
+            else
+              echo "ERROR: No tags found!"
+              exit 1
+            fi
+          else
+            echo "ERROR: Could not fetch available tags!"
             exit 1
           fi
-          echo "✅ Using main tag: $IMAGE_URL"
+        else
+          echo "✅ Image found and verified!"
         fi
         
         # Update image tag
