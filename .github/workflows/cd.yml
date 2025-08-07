@@ -73,9 +73,21 @@ jobs:
           # Use the provided tag
           echo "IMAGE_TAG=${{ inputs.image-tag }}" >> $GITHUB_OUTPUT
         else
-          # Use 'main' tag as fallback
-          echo "IMAGE_TAG=main" >> $GITHUB_OUTPUT
-          echo "⚠️ Using 'main' tag as fallback"
+          # Get the latest available tag from the registry
+          echo "📦 Fetching latest available tag..."
+          LATEST_TAG=$(gh api \
+            -H "Accept: application/vnd.github+json" \
+            /user/packages/container/edupoint-karnet%2Fbackend/versions \
+            --jq '.[0].metadata.container.tags | .[] | select(. != "latest" and . != "main")' 2>/dev/null | head -1 || echo "")
+          
+          if [ -n "$LATEST_TAG" ]; then
+            echo "IMAGE_TAG=$LATEST_TAG" >> $GITHUB_OUTPUT
+            echo "✅ Using latest available tag: $LATEST_TAG"
+          else
+            # Fallback to main if no numbered tags found
+            echo "IMAGE_TAG=main" >> $GITHUB_OUTPUT
+            echo "⚠️ No numbered tags found, using 'main' as fallback"
+          fi
         fi
         
         echo "Selected image tag: $(cat $GITHUB_OUTPUT | grep IMAGE_TAG | cut -d= -f2)"
