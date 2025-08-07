@@ -55,6 +55,13 @@ jobs:
     - name: 📦 Checkout repository
       uses: actions/checkout@v4
     
+    - name: 🔐 Login to GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    
     - name: 🏷️ Determine image tag
       id: determine-tag
       run: |
@@ -171,13 +178,6 @@ jobs:
     # ===========================================
     # 🚀 DEPLOYMENT PREPARATION
     # ===========================================
-    
-    - name: 🔐 Login to GitHub Container Registry
-      uses: docker/login-action@v3
-      with:
-        registry: ghcr.io
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
     
     - name: 🔒 Create GitHub Container Registry secret
       run: |
