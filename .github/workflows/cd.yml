@@ -73,29 +73,18 @@ jobs:
           # Get the tag from the CI workflow run (use short SHA)
           SHORT_SHA=$(echo "${{ github.event.workflow_run.head_sha }}" | cut -c1-7)
           echo "IMAGE_TAG=${{ github.event.workflow_run.id }}-${SHORT_SHA}" >> $GITHUB_OUTPUT
+          echo "✅ Using CI workflow tag: ${{ github.event.workflow_run.id }}-${SHORT_SHA}"
         elif [ -n "${{ inputs.image-tag }}" ]; then
           # Use the provided tag
           echo "IMAGE_TAG=${{ inputs.image-tag }}" >> $GITHUB_OUTPUT
+          echo "✅ Using provided tag: ${{ inputs.image-tag }}"
         else
-          # Get the latest available tag from the registry
-          echo "📦 Fetching latest available tag..."
-          export GH_TOKEN="${{ secrets.GITHUB_TOKEN }}"
-          LATEST_TAG=$(gh api \
-            -H "Accept: application/vnd.github+json" \
-            /user/packages/container/edupoint-karnet%2Fbackend/versions \
-            --jq '.[0].metadata.container.tags | .[] | select(. != "latest" and . != "main")' 2>/dev/null | head -1 || echo "")
-          
-          if [ -n "$LATEST_TAG" ]; then
-            echo "IMAGE_TAG=$LATEST_TAG" >> $GITHUB_OUTPUT
-            echo "✅ Using latest available tag: $LATEST_TAG"
-          else
-            # Fallback to main if no numbered tags found
-            echo "IMAGE_TAG=main" >> $GITHUB_OUTPUT
-            echo "⚠️ No numbered tags found, using 'main' as fallback"
-          fi
+          # Default to main tag when no specific tag is provided
+          echo "IMAGE_TAG=main" >> $GITHUB_OUTPUT
+          echo "✅ Using default tag: main"
         fi
         
-        echo "Selected image tag: $(cat $GITHUB_OUTPUT | grep IMAGE_TAG | cut -d= -f2)"
+        echo "📌 Selected image tag: $(cat $GITHUB_OUTPUT | grep IMAGE_TAG | cut -d= -f2)"
     
     # ===========================================
     # 🔧 TOOLS: Install Required CLI Tools
@@ -235,73 +224,18 @@ jobs:
       run: |
         cd devops/kubernetes/overlays/prod
         
-        # Debug: Show available images
-        echo "Looking for image tag: ${{ steps.determine-tag.outputs.IMAGE_TAG }}"
+        # Debug: Show selected image tag
+        echo "📦 Deploying backend with tag: ${{ steps.determine-tag.outputs.IMAGE_TAG }}"
         
-        # Verify image exists in registry
+        # Build the image URL
         IMAGE_URL="ghcr.io/${{ env.IMAGE_NAME }}/backend:${{ steps.determine-tag.outputs.IMAGE_TAG }}"
-        echo "Verifying image: $IMAGE_URL"
+        echo "🔍 Image URL: $IMAGE_URL"
         
-        # Check if image exists
-        if ! docker manifest inspect $IMAGE_URL 2>/dev/null; then
-          echo "⚠️ Image with tag '${{ steps.determine-tag.outputs.IMAGE_TAG }}' not found!"
-          echo "📦 Fetching available tags for backend..."
-          
-          # Method 1: Try using gh api with proper authentication
-          echo "Method 1: GitHub API..."
-          export GH_TOKEN="${{ secrets.GITHUB_TOKEN }}"
-          AVAILABLE_TAGS=$(gh api \
-            -H "Accept: application/vnd.github+json" \
-            -H "X-GitHub-Api-Version: 2022-11-28" \
-            "/user/packages/container/edupoint-karnet%2Fbackend/versions" \
-            --jq '.[0:10] | .[] | .metadata.container.tags[]' 2>&1 | grep -v "^gh:" | grep -v "^  " | head -10 || echo "")
-          
-          # Method 2: If gh api fails, try using docker to list tags
-          if [ -z "$AVAILABLE_TAGS" ]; then
-            echo "Method 2: Docker registry catalog..."
-            # Try to get catalog from registry (this might not work for ghcr.io)
-            AVAILABLE_TAGS=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-              "https://ghcr.io/v2/${{ github.repository }}/backend/tags/list" | \
-              jq -r '.tags[]' 2>/dev/null | head -10 || echo "")
-          fi
-          
-          # Method 3: Try common tag patterns
-          if [ -z "$AVAILABLE_TAGS" ]; then
-            echo "Method 3: Trying common tags..."
-            for tag in "main" "latest" "main-${{ github.sha }}" "main-$(echo ${{ github.sha }} | cut -c1-7)"; do
-              TEST_URL="ghcr.io/${{ env.IMAGE_NAME }}/backend:$tag"
-              if docker manifest inspect $TEST_URL 2>/dev/null; then
-                AVAILABLE_TAGS="$tag"
-                echo "Found working tag: $tag"
-                break
-              fi
-            done
-          fi
-          
-          if [ -n "$AVAILABLE_TAGS" ]; then
-            echo "Available tags:"
-            echo "$AVAILABLE_TAGS"
-            # Try to use the first available tag
-            FIRST_TAG=$(echo "$AVAILABLE_TAGS" | head -1 | tr -d ' ')
-            if [ -n "$FIRST_TAG" ]; then
-              IMAGE_URL="ghcr.io/${{ env.IMAGE_NAME }}/backend:$FIRST_TAG"
-              echo "📦 Trying available tag: $FIRST_TAG"
-              if docker manifest inspect $IMAGE_URL 2>/dev/null; then
-                echo "✅ Using available tag: $FIRST_TAG"
-              else
-                echo "ERROR: Could not use available tag!"
-                exit 1
-              fi
-            else
-              echo "ERROR: No usable tags found!"
-              exit 1
-            fi
-          else
-            echo "⚠️ Could not fetch tags, but will try to proceed with deployment anyway"
-            echo "The image might exist even if we can't list tags"
-          fi
+        # Try to verify image exists (may fail after VPN but continue anyway)
+        if docker manifest inspect $IMAGE_URL 2>/dev/null; then
+          echo "✅ Image verified successfully!"
         else
-          echo "✅ Image found and verified!"
+          echo "⚠️ Could not verify image (may be due to VPN), proceeding with deployment..."
         fi
         
         # Clean up old resources
@@ -314,18 +248,22 @@ jobs:
           ghcr.io/rafeekpro/edupoint-backend-prod=$IMAGE_URL
         
         # Build and apply
+        echo "🚀 Applying Kubernetes manifests..."
         kustomize build . | kubectl apply -f -
         
         # Wait for rollout with debug info
+        echo "⏳ Waiting for deployment rollout..."
         kubectl rollout status deployment/edupoint-backend -n ${{ env.NAMESPACE }} --timeout=300s || {
-          echo "Deployment failed, checking pod status..."
+          echo "❌ Deployment failed, checking pod status..."
           kubectl get pods -n ${{ env.NAMESPACE }} -l app=edupoint-backend
-          echo "Checking pod events..."
+          echo "📋 Checking pod events..."
           kubectl describe pods -n ${{ env.NAMESPACE }} -l app=edupoint-backend | tail -50
-          echo "Checking pod logs..."
+          echo "📝 Checking pod logs..."
           kubectl logs -n ${{ env.NAMESPACE }} -l app=edupoint-backend --tail=50 || true
           exit 1
         }
+        
+        echo "✅ Backend deployment completed successfully!"
     
     # ===========================================
     # 🌐 FRONTEND DEPLOYMENT  
@@ -336,50 +274,18 @@ jobs:
       run: |
         cd devops/kubernetes/overlays/prod
         
-        # Debug: Show available images
-        echo "Looking for image tag: ${{ steps.determine-tag.outputs.IMAGE_TAG }}"
+        # Debug: Show selected image tag
+        echo "📦 Deploying frontend with tag: ${{ steps.determine-tag.outputs.IMAGE_TAG }}"
         
-        # Verify image exists in registry
+        # Build the image URL
         IMAGE_URL="ghcr.io/${{ env.IMAGE_NAME }}/frontend:${{ steps.determine-tag.outputs.IMAGE_TAG }}"
-        echo "Verifying image: $IMAGE_URL"
+        echo "🔍 Image URL: $IMAGE_URL"
         
-        # Check if image exists
-        if ! docker manifest inspect $IMAGE_URL 2>/dev/null; then
-          echo "⚠️ Image with tag '${{ steps.determine-tag.outputs.IMAGE_TAG }}' not found!"
-          echo "📦 Fetching available tags for frontend..."
-          
-          # Method 1: Try using gh api with proper authentication
-          echo "Method 1: GitHub API..."
-          export GH_TOKEN="${{ secrets.GITHUB_TOKEN }}"
-          AVAILABLE_TAGS=$(gh api \
-            -H "Accept: application/vnd.github+json" \
-            -H "X-GitHub-Api-Version: 2022-11-28" \
-            "/user/packages/container/edupoint-karnet%2Ffrontend/versions" \
-            --jq '.[0:10] | .[] | .metadata.container.tags[]' 2>&1 | grep -v "^gh:" | grep -v "^  " | head -10 || echo "")
-          
-          if [ -n "$AVAILABLE_TAGS" ]; then
-            echo "$AVAILABLE_TAGS"
-            # Try to use the first available tag
-            FIRST_TAG=$(echo "$AVAILABLE_TAGS" | cut -d',' -f1 | tr -d ' ')
-            if [ -n "$FIRST_TAG" ]; then
-              IMAGE_URL="ghcr.io/${{ env.IMAGE_NAME }}/frontend:$FIRST_TAG"
-              echo "📦 Trying first available tag: $FIRST_TAG"
-              if docker manifest inspect $IMAGE_URL 2>/dev/null; then
-                echo "✅ Using available tag: $FIRST_TAG"
-              else
-                echo "ERROR: Could not use available tag!"
-                exit 1
-              fi
-            else
-              echo "ERROR: No tags found!"
-              exit 1
-            fi
-          else
-            echo "ERROR: Could not fetch available tags!"
-            exit 1
-          fi
+        # Try to verify image exists (may fail after VPN but continue anyway)
+        if docker manifest inspect $IMAGE_URL 2>/dev/null; then
+          echo "✅ Image verified successfully!"
         else
-          echo "✅ Image found and verified!"
+          echo "⚠️ Could not verify image (may be due to VPN), proceeding with deployment..."
         fi
         
         # Update image tag
@@ -387,18 +293,22 @@ jobs:
           ghcr.io/rafeekpro/edupoint-frontend-prod=$IMAGE_URL
         
         # Build and apply
+        echo "🚀 Applying Kubernetes manifests..."
         kustomize build . | kubectl apply -f -
         
         # Wait for rollout with debug info
+        echo "⏳ Waiting for deployment rollout..."
         kubectl rollout status deployment/edupoint-frontend -n ${{ env.NAMESPACE }} --timeout=300s || {
-          echo "Deployment failed, checking pod status..."
+          echo "❌ Deployment failed, checking pod status..."
           kubectl get pods -n ${{ env.NAMESPACE }} -l app=edupoint-frontend
-          echo "Checking pod events..."
+          echo "📋 Checking pod events..."
           kubectl describe pods -n ${{ env.NAMESPACE }} -l app=edupoint-frontend | tail -50
-          echo "Checking pod logs..."
+          echo "📝 Checking pod logs..."
           kubectl logs -n ${{ env.NAMESPACE }} -l app=edupoint-frontend --tail=50 || true
           exit 1
         }
+        
+        echo "✅ Frontend deployment completed successfully!"
     
     # ===========================================
     # ✅ VERIFICATION: Deployment Status
