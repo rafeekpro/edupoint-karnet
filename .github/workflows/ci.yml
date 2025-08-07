@@ -53,6 +53,16 @@ jobs:
     # 📦 SETUP: Repository and Build Environment
     # ===========================================
     
+    - name: 🔧 Fix DNS Resolution
+      run: |
+        # Fix potential DNS issues on GitHub runners
+        echo "nameserver 8.8.8.8" | sudo tee /etc/resolv.conf > /dev/null
+        echo "nameserver 8.8.4.4" | sudo tee -a /etc/resolv.conf > /dev/null
+        echo "nameserver 1.1.1.1" | sudo tee -a /etc/resolv.conf > /dev/null
+        
+        # Test DNS resolution
+        nslookup ghcr.io || echo "DNS resolution might have issues"
+    
     - name: 📦 Checkout repository
       uses: actions/checkout@v4
     
@@ -123,6 +133,16 @@ jobs:
     # 📦 SETUP: Repository and Build Environment
     # ===========================================
     
+    - name: 🔧 Fix DNS Resolution
+      run: |
+        # Fix potential DNS issues on GitHub runners
+        echo "nameserver 8.8.8.8" | sudo tee /etc/resolv.conf > /dev/null
+        echo "nameserver 8.8.4.4" | sudo tee -a /etc/resolv.conf > /dev/null
+        echo "nameserver 1.1.1.1" | sudo tee -a /etc/resolv.conf > /dev/null
+        
+        # Test DNS resolution
+        nslookup ghcr.io || echo "DNS resolution might have issues"
+    
     - name: 📦 Checkout repository
       uses: actions/checkout@v4
     
@@ -188,6 +208,16 @@ jobs:
     # ===========================================
     # 📦 SETUP: Repository and Build Environment
     # ===========================================
+    
+    - name: 🔧 Fix DNS Resolution
+      run: |
+        # Fix potential DNS issues on GitHub runners
+        echo "nameserver 8.8.8.8" | sudo tee /etc/resolv.conf > /dev/null
+        echo "nameserver 8.8.4.4" | sudo tee -a /etc/resolv.conf > /dev/null
+        echo "nameserver 1.1.1.1" | sudo tee -a /etc/resolv.conf > /dev/null
+        
+        # Test DNS resolution
+        nslookup ghcr.io || echo "DNS resolution might have issues"
     
     - name: 📦 Checkout repository
       uses: actions/checkout@v4
