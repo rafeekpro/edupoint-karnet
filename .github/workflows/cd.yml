@@ -66,10 +66,12 @@ jobs:
           # Use the provided tag
           echo "IMAGE_TAG=${{ inputs.image-tag }}" >> $GITHUB_OUTPUT
         else
-          # Use latest from main (use short SHA)
-          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
-          echo "IMAGE_TAG=${{ github.run_id }}-${SHORT_SHA}" >> $GITHUB_OUTPUT
+          # Use 'main' tag as fallback
+          echo "IMAGE_TAG=main" >> $GITHUB_OUTPUT
+          echo "⚠️ Using 'main' tag as fallback"
         fi
+        
+        echo "Selected image tag: $(cat $GITHUB_OUTPUT | grep IMAGE_TAG | cut -d= -f2)"
     
     # ===========================================
     # 🔧 TOOLS: Install Required CLI Tools
@@ -222,15 +224,27 @@ jobs:
         # Verify image exists in registry
         IMAGE_URL="ghcr.io/${{ env.IMAGE_NAME }}/backend:${{ steps.determine-tag.outputs.IMAGE_TAG }}"
         echo "Verifying image: $IMAGE_URL"
-        docker manifest inspect $IMAGE_URL || {
-          echo "ERROR: Image not found in registry!"
-          echo "Available tags for backend:"
-          gh api \
-            -H "Accept: application/vnd.github+json" \
-            /user/packages/container/edupoint-karnet%2Fbackend/versions \
-            --jq '.[0:5] | .[] | .metadata.container.tags[]' || true
-          exit 1
-        }
+        
+        # If specific tag doesn't exist, try 'main' tag
+        if ! docker manifest inspect $IMAGE_URL 2>/dev/null; then
+          echo "⚠️ Image tag not found, trying 'main' tag..."
+          IMAGE_URL="ghcr.io/${{ env.IMAGE_NAME }}/backend:main"
+          if ! docker manifest inspect $IMAGE_URL 2>/dev/null; then
+            echo "ERROR: No suitable image found!"
+            echo "Available tags for backend:"
+            gh api \
+              -H "Accept: application/vnd.github+json" \
+              /user/packages/container/edupoint-karnet%2Fbackend/versions \
+              --jq '.[0:5] | .[] | .metadata.container.tags[]' 2>/dev/null || echo "Could not fetch tags"
+            exit 1
+          fi
+          echo "✅ Using main tag: $IMAGE_URL"
+        fi
+        
+        # Clean up old resources
+        echo "🧹 Cleaning up old resources..."
+        kubectl delete secret edupoint-prod-secrets-7d4tmdc2bb -n ${{ env.NAMESPACE }} --ignore-not-found=true
+        kubectl delete secret edupoint-secrets-mh7k42h6f7 -n ${{ env.NAMESPACE }} --ignore-not-found=true
         
         # Update image tag
         kustomize edit set image \
@@ -265,15 +279,22 @@ jobs:
         # Verify image exists in registry
         IMAGE_URL="ghcr.io/${{ env.IMAGE_NAME }}/frontend:${{ steps.determine-tag.outputs.IMAGE_TAG }}"
         echo "Verifying image: $IMAGE_URL"
-        docker manifest inspect $IMAGE_URL || {
-          echo "ERROR: Image not found in registry!"
-          echo "Available tags for frontend:"
-          gh api \
-            -H "Accept: application/vnd.github+json" \
-            /user/packages/container/edupoint-karnet%2Ffrontend/versions \
-            --jq '.[0:5] | .[] | .metadata.container.tags[]' || true
-          exit 1
-        }
+        
+        # If specific tag doesn't exist, try 'main' tag
+        if ! docker manifest inspect $IMAGE_URL 2>/dev/null; then
+          echo "⚠️ Image tag not found, trying 'main' tag..."
+          IMAGE_URL="ghcr.io/${{ env.IMAGE_NAME }}/frontend:main"
+          if ! docker manifest inspect $IMAGE_URL 2>/dev/null; then
+            echo "ERROR: No suitable image found!"
+            echo "Available tags for frontend:"
+            gh api \
+              -H "Accept: application/vnd.github+json" \
+              /user/packages/container/edupoint-karnet%2Ffrontend/versions \
+              --jq '.[0:5] | .[] | .metadata.container.tags[]' 2>/dev/null || echo "Could not fetch tags"
+            exit 1
+          fi
+          echo "✅ Using main tag: $IMAGE_URL"
+        fi
         
         # Update image tag
         kustomize edit set image \
