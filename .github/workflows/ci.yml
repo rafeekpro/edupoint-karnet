@@ -53,20 +53,6 @@ jobs:
     # 📦 SETUP: Repository and Build Environment
     # ===========================================
     
-    - name: 🔧 Fix Docker DNS Resolution
-      run: |
-        # Configure Docker to use Google DNS
-        echo '{"dns": ["8.8.8.8", "8.8.4.4"]}' | sudo tee /etc/docker/daemon.json > /dev/null
-        
-        # Restart Docker to apply DNS changes
-        sudo systemctl restart docker
-        
-        # Wait for Docker to be ready
-        sleep 5
-        
-        # Verify Docker is running
-        docker version
-    
     - name: 📦 Checkout repository
       uses: actions/checkout@v4
     
@@ -137,20 +123,6 @@ jobs:
     # 📦 SETUP: Repository and Build Environment
     # ===========================================
     
-    - name: 🔧 Fix Docker DNS Resolution
-      run: |
-        # Configure Docker to use Google DNS
-        echo '{"dns": ["8.8.8.8", "8.8.4.4"]}' | sudo tee /etc/docker/daemon.json > /dev/null
-        
-        # Restart Docker to apply DNS changes
-        sudo systemctl restart docker
-        
-        # Wait for Docker to be ready
-        sleep 5
-        
-        # Verify Docker is running
-        docker version
-    
     - name: 📦 Checkout repository
       uses: actions/checkout@v4
     
@@ -216,20 +188,6 @@ jobs:
     # ===========================================
     # 📦 SETUP: Repository and Build Environment
     # ===========================================
-    
-    - name: 🔧 Fix Docker DNS Resolution
-      run: |
-        # Configure Docker to use Google DNS
-        echo '{"dns": ["8.8.8.8", "8.8.4.4"]}' | sudo tee /etc/docker/daemon.json > /dev/null
-        
-        # Restart Docker to apply DNS changes
-        sudo systemctl restart docker
-        
-        # Wait for Docker to be ready
-        sleep 5
-        
-        # Verify Docker is running
-        docker version
     
     - name: 📦 Checkout repository
       uses: actions/checkout@v4

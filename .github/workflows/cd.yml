@@ -52,23 +52,6 @@ jobs:
     # 📦 SETUP: Repository and Dependencies
     # ===========================================
     
-    - name: 🔧 Fix Docker DNS Resolution
-      run: |
-        # Configure Docker to use Google DNS
-        echo '{"dns": ["8.8.8.8", "8.8.4.4"]}' | sudo tee /etc/docker/daemon.json > /dev/null
-        
-        # Restart Docker to apply DNS changes
-        sudo systemctl restart docker
-        
-        # Wait for Docker to be ready
-        sleep 5
-        
-        # Verify Docker is running
-        docker version
-        
-        # Test DNS resolution
-        docker run --rm alpine nslookup ghcr.io
-    
     - name: 📦 Checkout repository
       uses: actions/checkout@v4
     
