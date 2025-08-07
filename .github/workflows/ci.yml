@@ -8,8 +8,29 @@ on:
       - 'frontend/**'
       - 'e2e-tests/**'
       - '.github/workflows/ci.yml'
+      - 'Dockerfile*'
+      - '*.dockerfile'
   pull_request:
     branches: [ main ]
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - 'e2e-tests/**'
+      - '.github/workflows/ci.yml'
+  workflow_dispatch:
+    inputs:
+      build-backend:
+        description: 'Build Backend'
+        type: boolean
+        default: true
+      build-frontend:
+        description: 'Build Frontend'
+        type: boolean
+        default: true
+      build-e2e:
+        description: 'Build E2E Tests'
+        type: boolean
+        default: true
 
 env:
   REGISTRY: ghcr.io
@@ -19,6 +40,7 @@ jobs:
   build-backend:
     name: 🎯 Build Backend API
     runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.build-backend }}
     outputs:
       version-tag: ${{ steps.meta.outputs.version }}
     permissions:
@@ -88,6 +110,7 @@ jobs:
   build-frontend:
     name: 🌐 Build React Frontend
     runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.build-frontend }}
     outputs:
       version-tag: ${{ steps.meta.outputs.version }}
     permissions:
@@ -153,6 +176,7 @@ jobs:
   build-e2e-tests:
     name: 🧪 Build E2E Tests
     runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.build-e2e }}
     outputs:
       version-tag: ${{ steps.meta.outputs.version }}
     permissions:
