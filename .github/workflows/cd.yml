@@ -79,6 +79,7 @@ jobs:
         else
           # Get the latest available tag from the registry
           echo "📦 Fetching latest available tag..."
+          export GH_TOKEN="${{ secrets.GITHUB_TOKEN }}"
           LATEST_TAG=$(gh api \
             -H "Accept: application/vnd.github+json" \
             /user/packages/container/edupoint-karnet%2Fbackend/versions \
@@ -248,11 +249,12 @@ jobs:
           
           # Method 1: Try using gh api with proper authentication
           echo "Method 1: GitHub API..."
+          export GH_TOKEN="${{ secrets.GITHUB_TOKEN }}"
           AVAILABLE_TAGS=$(gh api \
             -H "Accept: application/vnd.github+json" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
             "/user/packages/container/edupoint-karnet%2Fbackend/versions" \
-            --jq '.[0:10] | .[] | .metadata.container.tags[]' 2>&1 | grep -v "^gh:" | head -10 || echo "")
+            --jq '.[0:10] | .[] | .metadata.container.tags[]' 2>&1 | grep -v "^gh:" | grep -v "^  " | head -10 || echo "")
           
           # Method 2: If gh api fails, try using docker to list tags
           if [ -z "$AVAILABLE_TAGS" ]; then
@@ -348,11 +350,12 @@ jobs:
           
           # Method 1: Try using gh api with proper authentication
           echo "Method 1: GitHub API..."
+          export GH_TOKEN="${{ secrets.GITHUB_TOKEN }}"
           AVAILABLE_TAGS=$(gh api \
             -H "Accept: application/vnd.github+json" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
             "/user/packages/container/edupoint-karnet%2Ffrontend/versions" \
-            --jq '.[0:10] | .[] | .metadata.container.tags[]' 2>&1 | grep -v "^gh:" | head -10 || echo "")
+            --jq '.[0:10] | .[] | .metadata.container.tags[]' 2>&1 | grep -v "^gh:" | grep -v "^  " | head -10 || echo "")
           
           if [ -n "$AVAILABLE_TAGS" ]; then
             echo "$AVAILABLE_TAGS"
