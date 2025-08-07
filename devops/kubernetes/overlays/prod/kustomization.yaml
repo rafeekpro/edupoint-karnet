@@ -7,7 +7,7 @@ resources:
   - ../../base
 
 patches:
-  - deployment-patches.yaml
+  - path: deployment-patches.yaml
 
 configMapGenerator:
   - name: edupoint-config
