@@ -31,7 +31,7 @@ on:
         type: boolean
   
   workflow_run:
-    workflows: ["CI - Build and Push Images"]
+    workflows: ["🔨 CI - Build and Push Images"]
     types:
       - completed
     branches: [main]
@@ -65,7 +65,11 @@ jobs:
     - name: 🏷️ Determine image tag
       id: determine-tag
       run: |
+        echo "📋 Triggered by: ${{ github.event_name }}"
         if [ "${{ github.event_name }}" == "workflow_run" ]; then
+          echo "🔗 CI Workflow: ${{ github.event.workflow_run.name }}"
+          echo "✅ CI Status: ${{ github.event.workflow_run.conclusion }}"
+          echo "🆔 CI Run ID: ${{ github.event.workflow_run.id }}"
           # Get the tag from the CI workflow run (use short SHA)
           SHORT_SHA=$(echo "${{ github.event.workflow_run.head_sha }}" | cut -c1-7)
           echo "IMAGE_TAG=${{ github.event.workflow_run.id }}-${SHORT_SHA}" >> $GITHUB_OUTPUT
