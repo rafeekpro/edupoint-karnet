@@ -243,9 +243,9 @@ jobs:
         kubectl delete secret voucherskit-prod-secrets-7d4tmdc2bb -n ${{ env.NAMESPACE }} --ignore-not-found=true
         kubectl delete secret voucherskit-secrets-mh7k42h6f7 -n ${{ env.NAMESPACE }} --ignore-not-found=true
         
-        # Update image tag
+        # Update image tag (backend)
         kustomize edit set image \
-          ghcr.io/rafeekpro/voucherskit-backend-prod=$IMAGE_URL
+          ghcr.io/rafeekpro/voucherskit-backend-prod=ghcr.io/${{ env.IMAGE_NAME }}/backend:${{ steps.determine-tag.outputs.IMAGE_TAG }}
         
         # Build and apply
         echo "Applying Kubernetes manifests..."
@@ -288,9 +288,9 @@ jobs:
           echo "Could not verify image (may be due to VPN), proceeding with deployment..."
         fi
         
-        # Update image tag
+        # Update image tag (frontend)  
         kustomize edit set image \
-          ghcr.io/rafeekpro/voucherskit-frontend-prod=$IMAGE_URL
+          ghcr.io/rafeekpro/voucherskit-frontend-prod=ghcr.io/${{ env.IMAGE_NAME }}/frontend:${{ steps.determine-tag.outputs.IMAGE_TAG }}
         
         # Build and apply
         echo "Applying Kubernetes manifests..."

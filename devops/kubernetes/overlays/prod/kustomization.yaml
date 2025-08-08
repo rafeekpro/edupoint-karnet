@@ -21,8 +21,10 @@ configMapGenerator:
 
 images:
   - name: ghcr.io/rafeekpro/voucherskit-backend-prod
+    newName: ghcr.io/rafeekpro/edupoint-karnet/backend
     newTag: $(IMAGE_TAG)
   - name: ghcr.io/rafeekpro/voucherskit-frontend-prod
+    newName: ghcr.io/rafeekpro/edupoint-karnet/frontend
     newTag: $(IMAGE_TAG)
 
 # Replacements removed - handled directly in deployment patches
