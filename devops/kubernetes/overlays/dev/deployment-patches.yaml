@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: edupoint-backend
+  name: voucherskit-backend
 spec:
   replicas: 1
   template:
@@ -10,7 +10,7 @@ spec:
       - name: backend
         env:
         - name: REACT_APP_API_URL
-          value: "https://karnetapi-dev.edupoint.pl"
+          value: "https://api-dev.voucherskit.com"
         resources:
           requests:
             memory: "256Mi"
@@ -22,7 +22,7 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: edupoint-frontend
+  name: voucherskit-frontend
 spec:
   replicas: 1
   template:
@@ -31,7 +31,7 @@ spec:
       - name: frontend
         env:
         - name: REACT_APP_API_URL
-          value: "https://karnetapi-dev.edupoint.pl"
+          value: "https://api-dev.voucherskit.com"
         resources:
           requests:
             memory: "128Mi"

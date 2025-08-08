@@ -1,7 +1,7 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-namespace: edupoint-prod
+namespace: voucherskit-prod
 
 resources:
   - namespace.yaml
@@ -14,7 +14,7 @@ resources:
   - traefik-middleware.yaml
 
 configMapGenerator:
-  - name: edupoint-config
+  - name: voucherskit-config
     literals:
       - ENVIRONMENT=production
       - DB_HOST=postgres.local.pro4.es

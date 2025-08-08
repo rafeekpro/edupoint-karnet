@@ -1,8 +1,8 @@
-# Azure DevOps Variable Group Template: edupoint-voucher-library
+# Azure DevOps Variable Group Template: voucherskit-library
 # 
 # Create a variable group in Azure DevOps with the following variables:
 # Project Settings -> Library -> Variable Groups -> New Variable Group
-# Name: edupoint-voucher-library
+# Name: voucherskit-library
 
 # GitHub Container Registry Settings
 GITHUB_USER: your-github-username
@@ -21,12 +21,12 @@ JWT_SECRET_KEY: your-jwt-secret-key  # Mark as secret, generate with: openssl ra
 SECRET_KEY: your-app-secret-key  # Mark as secret
 
 # Domain Configuration
-DOMAIN_MAIN: edupoint.pl
+DOMAIN_MAIN: voucherskit.com
 URL_API_PUBLIC: api.voucherskit.com
 URL_FRONTEND_PUBLIC: voucherskit.com
-URL_API_LOCAL: karnetapi-dev.edupoint.pl
-URL_FRONTEND_LOCAL: karnet-dev.edupoint.pl
-ADMIN_EMAIL: admin@edupoint.pl
+URL_API_LOCAL: api-dev.voucherskit.com
+URL_FRONTEND_LOCAL: dev.voucherskit.com
+ADMIN_EMAIL: admin@voucherskit.com
 
 # Token Configuration
 ACCESS_TOKEN_EXPIRE_MINUTES: 30
@@ -39,13 +39,13 @@ ROLLBACK_ON_FAILURE: true
 # E2E Test Configuration
 E2E_BASE_URL: https://voucherskit.com
 E2E_API_URL: https://api.voucherskit.com
-E2E_TEST_USER: test@edupoint.pl
+E2E_TEST_USER: test@voucherskit.com
 E2E_TEST_PASSWORD: test-password  # Mark as secret
 
 # Kubernetes Configuration
-K8S_NAMESPACE_PROD: edupoint-prod
-K8S_NAMESPACE_DEV: edupoint-dev
-K8S_NAMESPACE_STAGING: edupoint-staging
+K8S_NAMESPACE_PROD: voucherskit-prod
+K8S_NAMESPACE_DEV: voucherskit-dev
+K8S_NAMESPACE_STAGING: voucherskit-staging
 
 # Monitoring and Logging (optional)
 ENABLE_MONITORING: true

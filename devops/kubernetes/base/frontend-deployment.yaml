@@ -1,24 +1,24 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: edupoint-frontend
+  name: voucherskit-frontend
   labels:
-    app: edupoint-frontend
+    app: voucherskit-frontend
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: edupoint-frontend
+      app: voucherskit-frontend
   template:
     metadata:
       labels:
-        app: edupoint-frontend
+        app: voucherskit-frontend
     spec:
       imagePullSecrets:
       - name: ghcr-secret
       containers:
       - name: frontend
-        image: ghcr.io/rafeekpro/edupoint-frontend-prod
+        image: ghcr.io/rafeekpro/voucherskit-frontend-prod
         ports:
         - containerPort: 3000
         env:

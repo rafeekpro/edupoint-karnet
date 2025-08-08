@@ -24,7 +24,7 @@ origins = [
     "http://localhost:3000",
     "http://app.localhost",  # Docker Traefik local
     "https://voucherskit.com",
-    "https://karnet-dev.edupoint.pl",
+    "https://dev.voucherskit.com",
 ]
 
 # Add additional origins from environment variable if provided

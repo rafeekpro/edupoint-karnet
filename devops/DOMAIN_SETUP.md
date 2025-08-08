@@ -1,4 +1,4 @@
-# Domain Configuration for EduPoint Karnet
+# Domain Configuration for Voucherskit
 
 ## Production Domains
 
@@ -7,8 +7,8 @@
 
 ## Development Domains
 
-- **Frontend**: https://karnet-dev.edupoint.pl
-- **Backend API**: https://karnetapi-dev.edupoint.pl
+- **Frontend**: https://dev.voucherskit.com
+- **Backend API**: https://api-dev.voucherskit.com
 
 ## DNS Configuration Required
 
@@ -22,8 +22,8 @@ api.voucherskit.com   A     <your-k8s-ingress-ip>
 
 ### Development
 ```
-karnet-dev.edupoint.pl      A     <your-k8s-ingress-ip>
-karnetapi-dev.edupoint.pl   A     <your-k8s-ingress-ip>
+dev.voucherskit.com      A     <your-k8s-ingress-ip>
+api-dev.voucherskit.com   A     <your-k8s-ingress-ip>
 ```
 
 ## SSL Certificates
@@ -39,15 +39,15 @@ Make sure to update these in Azure DevOps variable groups:
 ```yaml
 URL_API_PUBLIC: api.voucherskit.com
 URL_FRONTEND_PUBLIC: voucherskit.com
-URL_API_LOCAL: karnetapi-dev.edupoint.pl
-URL_FRONTEND_LOCAL: karnet-dev.edupoint.pl
+URL_API_LOCAL: api-dev.voucherskit.com
+URL_FRONTEND_LOCAL: dev.voucherskit.com
 ```
 
 ## Frontend Configuration
 
 The frontend React app will use these API endpoints:
 - Production: `https://api.voucherskit.com`
-- Development: `https://karnetapi-dev.edupoint.pl`
+- Development: `https://api-dev.voucherskit.com`
 
 This is configured via the `REACT_APP_API_URL` environment variable.
 
@@ -55,7 +55,7 @@ This is configured via the `REACT_APP_API_URL` environment variable.
 
 Ensure the backend allows CORS from:
 - `https://voucherskit.com`
-- `https://karnet-dev.edupoint.pl`
+- `https://dev.voucherskit.com`
 - `http://localhost:3000` (for local development)
 
 ## Testing Domain Configuration
@@ -71,16 +71,16 @@ curl https://api.voucherskit.com/health
 curl https://api.voucherskit.com/docs
 
 # Test dev environment
-curl -I https://karnet-dev.edupoint.pl
-curl https://karnetapi-dev.edupoint.pl/health
+curl -I https://dev.voucherskit.com
+curl https://api-dev.voucherskit.com/health
 ```
 
 ## Troubleshooting
 
 1. **Certificate Issues**
    ```bash
-   kubectl get certificates -n edupoint-prod
-   kubectl describe certificate edupoint-tls -n edupoint-prod
+   kubectl get certificates -n voucherskit-prod
+   kubectl describe certificate voucherskit-tls -n voucherskit-prod
    ```
 
 2. **DNS Resolution**
@@ -91,6 +91,6 @@ curl https://karnetapi-dev.edupoint.pl/health
 
 3. **Ingress Status**
    ```bash
-   kubectl get ingress -n edupoint-prod
-   kubectl describe ingress edupoint-ingress -n edupoint-prod
+   kubectl get ingress -n voucherskit-prod
+   kubectl describe ingress voucherskit-ingress -n voucherskit-prod
    ```

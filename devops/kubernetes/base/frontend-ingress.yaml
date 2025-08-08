@@ -1,18 +1,18 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: edupoint-frontend-ingress
+  name: voucherskit-frontend-ingress
   annotations:
     cert-manager.io/cluster-issuer: "letsencrypt-prod"
     traefik.ingress.kubernetes.io/router.entrypoints: websecure
     traefik.ingress.kubernetes.io/router.tls: "true"
-    traefik.ingress.kubernetes.io/router.middlewares: edupoint-prod-redirect-to-https@kubernetescrd,edupoint-prod-security-headers@kubernetescrd
+    traefik.ingress.kubernetes.io/router.middlewares: voucherskit-prod-redirect-to-https@kubernetescrd,voucherskit-prod-security-headers@kubernetescrd
 spec:
   ingressClassName: traefik
   tls:
   - hosts:
     - voucherskit.com
-    secretName: edupoint-frontend-tls
+    secretName: voucherskit-frontend-tls
   rules:
   - host: voucherskit.com
     http:
@@ -21,6 +21,6 @@ spec:
         pathType: Prefix
         backend:
           service:
-            name: edupoint-frontend
+            name: voucherskit-frontend
             port:
               number: 3000

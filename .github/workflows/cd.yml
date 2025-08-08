@@ -39,7 +39,7 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
-  NAMESPACE: edupoint-prod
+  NAMESPACE: voucherskit-prod
 
 jobs:
   setup-vpn-and-deploy:
@@ -206,11 +206,11 @@ jobs:
     
     - name: Create application secrets
       run: |
-        kubectl delete secret edupoint-prod-secrets \
+        kubectl delete secret voucherskit-prod-secrets \
           --namespace=${{ env.NAMESPACE }} \
           --ignore-not-found=true
         
-        kubectl create secret generic edupoint-prod-secrets \
+        kubectl create secret generic voucherskit-prod-secrets \
           --namespace=${{ env.NAMESPACE }} \
           --from-literal=DB_PASSWORD="${{ secrets.DB_PASSWORD_PROD }}" \
           --from-literal=JWT_SECRET_KEY="${{ secrets.JWT_SECRET_KEY_PROD }}"
@@ -240,12 +240,12 @@ jobs:
         
         # Clean up old resources
         echo "Cleaning up old resources..."
-        kubectl delete secret edupoint-prod-secrets-7d4tmdc2bb -n ${{ env.NAMESPACE }} --ignore-not-found=true
-        kubectl delete secret edupoint-secrets-mh7k42h6f7 -n ${{ env.NAMESPACE }} --ignore-not-found=true
+        kubectl delete secret voucherskit-prod-secrets-7d4tmdc2bb -n ${{ env.NAMESPACE }} --ignore-not-found=true
+        kubectl delete secret voucherskit-secrets-mh7k42h6f7 -n ${{ env.NAMESPACE }} --ignore-not-found=true
         
         # Update image tag
         kustomize edit set image \
-          ghcr.io/rafeekpro/edupoint-backend-prod=$IMAGE_URL
+          ghcr.io/rafeekpro/voucherskit-backend-prod=$IMAGE_URL
         
         # Build and apply
         echo "Applying Kubernetes manifests..."
@@ -253,13 +253,13 @@ jobs:
         
         # Wait for rollout with debug info
         echo "Waiting for deployment rollout..."
-        kubectl rollout status deployment/edupoint-backend -n ${{ env.NAMESPACE }} --timeout=300s || {
+        kubectl rollout status deployment/voucherskit-backend -n ${{ env.NAMESPACE }} --timeout=300s || {
           echo "Deployment failed, checking pod status..."
-          kubectl get pods -n ${{ env.NAMESPACE }} -l app=edupoint-backend
+          kubectl get pods -n ${{ env.NAMESPACE }} -l app=voucherskit-backend
           echo "Checking pod events..."
-          kubectl describe pods -n ${{ env.NAMESPACE }} -l app=edupoint-backend | tail -50
+          kubectl describe pods -n ${{ env.NAMESPACE }} -l app=voucherskit-backend | tail -50
           echo "Checking pod logs..."
-          kubectl logs -n ${{ env.NAMESPACE }} -l app=edupoint-backend --tail=50 || true
+          kubectl logs -n ${{ env.NAMESPACE }} -l app=voucherskit-backend --tail=50 || true
           exit 1
         }
         
@@ -290,7 +290,7 @@ jobs:
         
         # Update image tag
         kustomize edit set image \
-          ghcr.io/rafeekpro/edupoint-frontend-prod=$IMAGE_URL
+          ghcr.io/rafeekpro/voucherskit-frontend-prod=$IMAGE_URL
         
         # Build and apply
         echo "Applying Kubernetes manifests..."
@@ -298,13 +298,13 @@ jobs:
         
         # Wait for rollout with debug info
         echo "Waiting for deployment rollout..."
-        kubectl rollout status deployment/edupoint-frontend -n ${{ env.NAMESPACE }} --timeout=300s || {
+        kubectl rollout status deployment/voucherskit-frontend -n ${{ env.NAMESPACE }} --timeout=300s || {
           echo "Deployment failed, checking pod status..."
-          kubectl get pods -n ${{ env.NAMESPACE }} -l app=edupoint-frontend
+          kubectl get pods -n ${{ env.NAMESPACE }} -l app=voucherskit-frontend
           echo "Checking pod events..."
-          kubectl describe pods -n ${{ env.NAMESPACE }} -l app=edupoint-frontend | tail -50
+          kubectl describe pods -n ${{ env.NAMESPACE }} -l app=voucherskit-frontend | tail -50
           echo "Checking pod logs..."
-          kubectl logs -n ${{ env.NAMESPACE }} -l app=edupoint-frontend --tail=50 || true
+          kubectl logs -n ${{ env.NAMESPACE }} -l app=voucherskit-frontend --tail=50 || true
           exit 1
         }
         

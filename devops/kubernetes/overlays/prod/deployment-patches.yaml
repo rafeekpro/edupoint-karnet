@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: edupoint-backend
+  name: voucherskit-backend
 spec:
   replicas: 3
   template:
@@ -12,12 +12,12 @@ spec:
         - name: DB_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: edupoint-prod-secrets
+              name: voucherskit-prod-secrets
               key: DB_PASSWORD
         - name: JWT_SECRET_KEY
           valueFrom:
             secretKeyRef:
-              name: edupoint-prod-secrets
+              name: voucherskit-prod-secrets
               key: JWT_SECRET_KEY
         livenessProbe:
           httpGet:
@@ -44,7 +44,7 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: edupoint-frontend
+  name: voucherskit-frontend
 spec:
   replicas: 3
   template:

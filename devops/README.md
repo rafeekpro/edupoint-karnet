@@ -1,6 +1,6 @@
-# EduPoint Voucher DevOps
+# Voucherskit Voucher DevOps
 
-This directory contains CI/CD pipelines and Kubernetes manifests for deploying the EduPoint Voucher application.
+This directory contains CI/CD pipelines and Kubernetes manifests for deploying the Voucherskit Voucher application.
 
 ## Structure
 
@@ -25,7 +25,7 @@ devops/
 1. **Azure DevOps Project** with:
    - Self-hosted agent pool named 'SelfHosted'
    - Service connection to Kubernetes cluster
-   - Variable group `edupoint-voucher-library` (see variables-template.yml)
+   - Variable group `voucherskit-voucher-library` (see variables-template.yml)
 
 2. **GitHub Container Registry** access:
    - GitHub Personal Access Token with packages permissions
@@ -41,7 +41,7 @@ devops/
 ### 1. Create Azure DevOps Variable Group
 
 1. Go to Project Settings → Library → Variable Groups
-2. Create new group: `edupoint-voucher-library`
+2. Create new group: `voucherskit-voucher-library`
 3. Add variables from `variables-template.yml`
 4. Mark sensitive variables as secret
 
@@ -58,13 +58,13 @@ devops/
 
 1. Create namespace:
    ```bash
-   kubectl create namespace edupoint-prod
+   kubectl create namespace voucherskit-prod
    ```
 
 2. Create GitHub registry secret:
    ```bash
    kubectl create secret docker-registry ghcr-secret \
-     --namespace=edupoint-prod \
+     --namespace=voucherskit-prod \
      --docker-server=ghcr.io \
      --docker-username=YOUR_GITHUB_USER \
      --docker-password=YOUR_GITHUB_PAT
@@ -108,19 +108,19 @@ Steps:
 ## Environment Configuration
 
 ### Production (prod)
-- Namespace: `edupoint-prod`
+- Namespace: `voucherskit-prod`
 - Replicas: 3 (backend & frontend)
 - Resources: Higher limits
 - SSL: Let's Encrypt production
 
 ### Development (dev)
-- Namespace: `edupoint-dev`
+- Namespace: `voucherskit-dev`
 - Replicas: 1
 - Resources: Lower limits
 - SSL: Let's Encrypt staging or self-signed
 
 ### Staging (staging)
-- Namespace: `edupoint-staging`
+- Namespace: `voucherskit-staging`
 - Replicas: 2
 - Resources: Medium limits
 - SSL: Let's Encrypt staging
@@ -129,27 +129,27 @@ Steps:
 
 ### Check Deployment Status
 ```bash
-kubectl get all -n edupoint-prod
-kubectl get pods -n edupoint-prod
-kubectl describe deployment edupoint-backend -n edupoint-prod
+kubectl get all -n voucherskit-prod
+kubectl get pods -n voucherskit-prod
+kubectl describe deployment voucherskit-backend -n voucherskit-prod
 ```
 
 ### View Logs
 ```bash
-kubectl logs -n edupoint-prod -l app=edupoint-backend --tail=100
-kubectl logs -n edupoint-prod -l app=edupoint-frontend --tail=100
+kubectl logs -n voucherskit-prod -l app=voucherskit-backend --tail=100
+kubectl logs -n voucherskit-prod -l app=voucherskit-frontend --tail=100
 ```
 
 ### Check Certificates
 ```bash
-kubectl get certificates -n edupoint-prod
-kubectl describe certificate edupoint-tls -n edupoint-prod
+kubectl get certificates -n voucherskit-prod
+kubectl describe certificate voucherskit-tls -n voucherskit-prod
 ```
 
 ### Rollback Deployment
 ```bash
-kubectl rollout undo deployment/edupoint-backend -n edupoint-prod
-kubectl rollout undo deployment/edupoint-frontend -n edupoint-prod
+kubectl rollout undo deployment/voucherskit-backend -n voucherskit-prod
+kubectl rollout undo deployment/voucherskit-frontend -n voucherskit-prod
 ```
 
 ## Security Considerations

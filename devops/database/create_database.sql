@@ -1,4 +1,4 @@
--- Script to create database and user for EduPoint Voucher System
+-- Script to create database and user for Voucherskit System
 -- Run this script as PostgreSQL admin user
 -- 
 -- Connection details for admin:

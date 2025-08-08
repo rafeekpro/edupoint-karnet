@@ -1,9 +1,9 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: edupoint-frontend
+  name: voucherskit-frontend
   labels:
-    app: edupoint-frontend
+    app: voucherskit-frontend
 spec:
   type: ClusterIP
   ports:
@@ -12,4 +12,4 @@ spec:
     protocol: TCP
     name: http
   selector:
-    app: edupoint-frontend
+    app: voucherskit-frontend

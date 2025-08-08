@@ -1,33 +1,33 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: edupoint-ingress
+  name: voucherskit-ingress
   annotations:
     cert-manager.io/cluster-issuer: "letsencrypt-staging"
 spec:
   tls:
   - hosts:
-    - karnet-dev.edupoint.pl
-    - karnetapi-dev.edupoint.pl
-    secretName: edupoint-dev-tls
+    - dev.voucherskit.com
+    - api-dev.voucherskit.com
+    secretName: voucherskit-dev-tls
   rules:
-  - host: karnet-dev.edupoint.pl
+  - host: dev.voucherskit.com
     http:
       paths:
       - path: /
         pathType: Prefix
         backend:
           service:
-            name: edupoint-frontend
+            name: voucherskit-frontend
             port:
               number: 3000
-  - host: karnetapi-dev.edupoint.pl
+  - host: api-dev.voucherskit.com
     http:
       paths:
       - path: /
         pathType: Prefix
         backend:
           service:
-            name: edupoint-backend
+            name: voucherskit-backend
             port:
               number: 8000

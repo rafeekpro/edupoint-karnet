@@ -23,14 +23,14 @@ spec:
         - name: POSTGRES_DB
           valueFrom:
             configMapKeyRef:
-              name: edupoint-config
+              name: voucherskit-config
               key: DB_NAME
         - name: POSTGRES_USER
           value: therapy_user
         - name: POSTGRES_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: edupoint-secrets
+              name: voucherskit-secrets
               key: DB_PASSWORD
         volumeMounts:
         - name: postgres-storage

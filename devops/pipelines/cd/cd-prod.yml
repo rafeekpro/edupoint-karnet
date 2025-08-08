@@ -43,7 +43,7 @@ pool:
   vmImage: 'ubuntu-latest'
 
 variables:
-  - group: edupoint-voucher-library
+  - group: voucherskit-library
   - name: containerRegistry
     value: 'ghcr.io/$(GITHUB_USER)'
   - name: deployEnvironment
@@ -51,7 +51,7 @@ variables:
   - name: deployImageTag
     value: ${{ parameters.imageTag }}
   - name: namespace
-    value: 'edupoint-$(deployEnvironment)'
+    value: 'voucherskit-$(deployEnvironment)'
 
 stages:
 - stage: PreDeploy
@@ -111,7 +111,7 @@ stages:
           # KUBECONFIG_CONTENT must be set in variable group as base64 encoded kubeconfig
           if [ -z "$(KUBECONFIG_CONTENT)" ]; then
             echo "##[error]ERROR: KUBECONFIG_CONTENT variable not found!"
-            echo "##[error]Please add KUBECONFIG_CONTENT to your variable group 'edupoint-voucher-library'"
+            echo "##[error]Please add KUBECONFIG_CONTENT to your variable group 'voucherskit-library'"
             echo "##[error]The variable should contain base64 encoded kubeconfig file"
             echo "##[error]You can create it with: cat ~/.kube/config | base64 -w 0"
             exit 1
@@ -165,7 +165,7 @@ stages:
           
           if [ -z "$(GITHUB_USER)" ] || [ -z "$(GITHUB_PAT)" ]; then
             echo "##[error]ERROR: GITHUB_USER or GITHUB_PAT not set!"
-            echo "##[error]These variables must be defined in the variable group 'edupoint-voucher-library'"
+            echo "##[error]These variables must be defined in the variable group 'voucherskit-library'"
             exit 1
           fi
           
@@ -201,7 +201,7 @@ stages:
       inputs:
         targetType: 'inline'
         script: |
-          kubectl create secret generic edupoint-prod-secrets \
+          kubectl create secret generic voucherskit-prod-secrets \
           --namespace=$(namespace) \
           --from-literal=db-password=$(DB_PASSWORD_PROD) \
           --from-literal=jwt-secret=$(JWT_SECRET_KEY_PROD) \
@@ -212,19 +212,19 @@ stages:
       inputs:
         targetType: 'inline'
         script: |
-          echo "=== Pre-deployment cleanup for edupoint-backend ==="
+          echo "=== Pre-deployment cleanup for voucherskit-backend ==="
           
           # Check if deployment exists with :prod tag
-          CURRENT_IMAGE=$(kubectl get deployment edupoint-backend -n $(namespace) -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null || echo "")
+          CURRENT_IMAGE=$(kubectl get deployment voucherskit-backend -n $(namespace) -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null || echo "")
           if [[ "$CURRENT_IMAGE" == *":prod" ]]; then
             echo "❌ Found :prod tag in existing deployment: $CURRENT_IMAGE"
             echo "Cleaning up old deployment..."
             
             # Delete the deployment
-            kubectl delete deployment edupoint-backend -n $(namespace) --ignore-not-found=true
+            kubectl delete deployment voucherskit-backend -n $(namespace) --ignore-not-found=true
             
             # Delete all associated ReplicaSets
-            kubectl delete rs -l app=edupoint-backend -n $(namespace) --ignore-not-found=true
+            kubectl delete rs -l app=voucherskit-backend -n $(namespace) --ignore-not-found=true
             
             # Wait a bit for cleanup
             sleep 5
@@ -271,7 +271,7 @@ stages:
           echo "##[command]Environment: PRODUCTION"
           echo "##[section]========================================"
           kustomize edit set image \
-            ghcr.io/$(GITHUB_USER)/edupoint-backend-prod=ghcr.io/$(GITHUB_USER)/edupoint-backend-prod:$VERSION_TAG
+            ghcr.io/$(GITHUB_USER)/voucherskit-backend-prod=ghcr.io/$(GITHUB_USER)/voucherskit-backend-prod:$VERSION_TAG
           
           # Build configuration
           echo "=== Building configuration ==="
@@ -303,9 +303,9 @@ stages:
           echo "##[section]========================================"
           
           # Check if deployment exists before trying to restart
-          if kubectl get deployment edupoint-backend -n $(namespace) &> /dev/null; then
+          if kubectl get deployment voucherskit-backend -n $(namespace) &> /dev/null; then
             echo "##[section]🔄 Forcing rollout restart to pull new image"
-            kubectl rollout restart deployment/edupoint-backend -n $(namespace)
+            kubectl rollout restart deployment/voucherskit-backend -n $(namespace)
           else
             echo "##[section]📦 First deployment - no restart needed"
           fi
@@ -322,19 +322,19 @@ stages:
           kubectl get all -n $(namespace)
           
           echo "\n=== Checking specific deployment ==="
-          kubectl get deployment edupoint-backend -n $(namespace) || echo "Deployment not found"
+          kubectl get deployment voucherskit-backend -n $(namespace) || echo "Deployment not found"
           
           echo "Checking pods..."
-          kubectl get pods -n $(namespace) -l app=edupoint-backend
+          kubectl get pods -n $(namespace) -l app=voucherskit-backend
           
           echo "Waiting for deployment rollout..."
-          kubectl rollout status deployment/edupoint-backend -n $(namespace) --timeout=300s || {
+          kubectl rollout status deployment/voucherskit-backend -n $(namespace) --timeout=300s || {
             echo "Deployment failed or timed out. Checking deployment details..."
-            kubectl describe deployment edupoint-backend -n $(namespace)
+            kubectl describe deployment voucherskit-backend -n $(namespace)
             echo "Checking pod status..."
-            kubectl describe pods -n $(namespace) -l app=edupoint-backend
+            kubectl describe pods -n $(namespace) -l app=voucherskit-backend
             echo "Recent logs from all pods..."
-            kubectl logs -n $(namespace) -l app=edupoint-backend --tail=50 --all-containers=true
+            kubectl logs -n $(namespace) -l app=voucherskit-backend --tail=50 --all-containers=true
             exit 1
           }
 
@@ -355,19 +355,19 @@ stages:
       inputs:
         targetType: 'inline'
         script: |
-          echo "=== Pre-deployment cleanup for edupoint-frontend ==="
+          echo "=== Pre-deployment cleanup for voucherskit-frontend ==="
           
           # Check if deployment exists with :prod tag
-          CURRENT_IMAGE=$(kubectl get deployment edupoint-frontend -n $(namespace) -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null || echo "")
+          CURRENT_IMAGE=$(kubectl get deployment voucherskit-frontend -n $(namespace) -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null || echo "")
           if [[ "$CURRENT_IMAGE" == *":prod" ]]; then
             echo "❌ Found :prod tag in existing deployment: $CURRENT_IMAGE"
             echo "Cleaning up old deployment..."
             
             # Delete the deployment
-            kubectl delete deployment edupoint-frontend -n $(namespace) --ignore-not-found=true
+            kubectl delete deployment voucherskit-frontend -n $(namespace) --ignore-not-found=true
             
             # Delete all associated ReplicaSets
-            kubectl delete rs -l app=edupoint-frontend -n $(namespace) --ignore-not-found=true
+            kubectl delete rs -l app=voucherskit-frontend -n $(namespace) --ignore-not-found=true
             
             # Wait a bit for cleanup
             sleep 5
@@ -410,7 +410,7 @@ stages:
           echo "##[command]Environment: PRODUCTION"
           echo "##[section]========================================"
           kustomize edit set image \
-            ghcr.io/$(GITHUB_USER)/edupoint-frontend-prod=ghcr.io/$(GITHUB_USER)/edupoint-frontend-prod:$VERSION_TAG
+            ghcr.io/$(GITHUB_USER)/voucherskit-frontend-prod=ghcr.io/$(GITHUB_USER)/voucherskit-frontend-prod:$VERSION_TAG
           
           # Build configuration
           echo "=== Building configuration ==="
@@ -426,9 +426,9 @@ stages:
           echo "##[section]========================================"
           
           # Check if deployment exists before trying to restart
-          if kubectl get deployment edupoint-frontend -n $(namespace) &> /dev/null; then
+          if kubectl get deployment voucherskit-frontend -n $(namespace) &> /dev/null; then
             echo "##[section]🔄 Forcing rollout restart to pull new image"
-            kubectl rollout restart deployment/edupoint-frontend -n $(namespace)
+            kubectl rollout restart deployment/voucherskit-frontend -n $(namespace)
           else
             echo "##[section]📦 First deployment - no restart needed"
           fi
@@ -439,16 +439,16 @@ stages:
         targetType: 'inline'
         script: |
           echo "Checking deployment status..."
-          kubectl get deployment edupoint-frontend -n $(namespace)
+          kubectl get deployment voucherskit-frontend -n $(namespace)
           
           echo "Checking pods..."
-          kubectl get pods -n $(namespace) -l app=edupoint-frontend
+          kubectl get pods -n $(namespace) -l app=voucherskit-frontend
           
           echo "Waiting for deployment rollout..."
-          kubectl rollout status deployment/edupoint-frontend -n $(namespace) --timeout=300s || {
+          kubectl rollout status deployment/voucherskit-frontend -n $(namespace) --timeout=300s || {
             echo "Frontend deployment failed. Checking status..."
-            kubectl describe pods -n $(namespace) -l app=edupoint-frontend
-            kubectl logs -n $(namespace) -l app=edupoint-frontend --tail=50
+            kubectl describe pods -n $(namespace) -l app=voucherskit-frontend
+            kubectl logs -n $(namespace) -l app=voucherskit-frontend --tail=50
             exit 1
           }
 
@@ -525,29 +525,29 @@ stages:
           
           # Check backend deployment if it was deployed
           if [ "${{ parameters.deployBackend }}" = "true" ]; then
-            echo "Checking edupoint-backend deployment..."
-            READY_REPLICAS=$(kubectl get deployment edupoint-backend -n $(namespace) -o jsonpath='{.status.readyReplicas}' || echo "0")
-            DESIRED_REPLICAS=$(kubectl get deployment edupoint-backend -n $(namespace) -o jsonpath='{.spec.replicas}' || echo "1")
+            echo "Checking voucherskit-backend deployment..."
+            READY_REPLICAS=$(kubectl get deployment voucherskit-backend -n $(namespace) -o jsonpath='{.status.readyReplicas}' || echo "0")
+            DESIRED_REPLICAS=$(kubectl get deployment voucherskit-backend -n $(namespace) -o jsonpath='{.spec.replicas}' || echo "1")
             
             if [ "$READY_REPLICAS" != "$DESIRED_REPLICAS" ]; then
-              echo "❌ edupoint-backend: Only $READY_REPLICAS/$DESIRED_REPLICAS replicas are ready"
+              echo "❌ voucherskit-backend: Only $READY_REPLICAS/$DESIRED_REPLICAS replicas are ready"
               DEPLOYMENT_HEALTHY=false
             else
-              echo "✅ edupoint-backend: $READY_REPLICAS/$DESIRED_REPLICAS replicas ready"
+              echo "✅ voucherskit-backend: $READY_REPLICAS/$DESIRED_REPLICAS replicas ready"
             fi
           fi
           
           # Check frontend deployment if it was deployed
           if [ "${{ parameters.deployFrontend }}" = "true" ]; then
-            echo "Checking edupoint-frontend deployment..."
-            READY_REPLICAS=$(kubectl get deployment edupoint-frontend -n $(namespace) -o jsonpath='{.status.readyReplicas}' || echo "0")
-            DESIRED_REPLICAS=$(kubectl get deployment edupoint-frontend -n $(namespace) -o jsonpath='{.spec.replicas}' || echo "1")
+            echo "Checking voucherskit-frontend deployment..."
+            READY_REPLICAS=$(kubectl get deployment voucherskit-frontend -n $(namespace) -o jsonpath='{.status.readyReplicas}' || echo "0")
+            DESIRED_REPLICAS=$(kubectl get deployment voucherskit-frontend -n $(namespace) -o jsonpath='{.spec.replicas}' || echo "1")
             
             if [ "$READY_REPLICAS" != "$DESIRED_REPLICAS" ]; then
-              echo "❌ edupoint-frontend: Only $READY_REPLICAS/$DESIRED_REPLICAS replicas are ready"
+              echo "❌ voucherskit-frontend: Only $READY_REPLICAS/$DESIRED_REPLICAS replicas are ready"
               DEPLOYMENT_HEALTHY=false
             else
-              echo "✅ edupoint-frontend: $READY_REPLICAS/$DESIRED_REPLICAS replicas ready"
+              echo "✅ voucherskit-frontend: $READY_REPLICAS/$DESIRED_REPLICAS replicas ready"
             fi
           fi
           
@@ -579,8 +579,8 @@ stages:
           echo "=== Checking application endpoints ==="
           
           # Get ingress endpoints
-          FRONTEND_URL=$(kubectl get ingress edupoint-frontend-ingress -n $(namespace) -o jsonpath='{.spec.rules[0].host}' 2>/dev/null || echo "")
-          BACKEND_URL=$(kubectl get ingress edupoint-backend-ingress -n $(namespace) -o jsonpath='{.spec.rules[0].host}' 2>/dev/null || echo "")
+          FRONTEND_URL=$(kubectl get ingress voucherskit-frontend-ingress -n $(namespace) -o jsonpath='{.spec.rules[0].host}' 2>/dev/null || echo "")
+          BACKEND_URL=$(kubectl get ingress voucherskit-backend-ingress -n $(namespace) -o jsonpath='{.spec.rules[0].host}' 2>/dev/null || echo "")
           
           if [ ! -z "$FRONTEND_URL" ]; then
             echo "Frontend URL: https://$FRONTEND_URL"
