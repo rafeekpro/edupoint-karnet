@@ -23,7 +23,7 @@ spec:
         - containerPort: 3000
         env:
         - name: REACT_APP_API_URL
-          value: "https://karnetapi.edupoint.pl"
+          value: "https://api.voucherskit.com"
         - name: NODE_ENV
           value: "production"
         livenessProbe:

@@ -11,10 +11,10 @@ spec:
   ingressClassName: traefik
   tls:
   - hosts:
-    - karnet.edupoint.pl
+    - voucherskit.com
     secretName: edupoint-frontend-tls
   rules:
-  - host: karnet.edupoint.pl
+  - host: voucherskit.com
     http:
       paths:
       - path: /

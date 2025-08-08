@@ -23,7 +23,7 @@ import os
 origins = [
     "http://localhost:3000",
     "http://app.localhost",  # Docker Traefik local
-    "https://karnet.edupoint.pl",
+    "https://voucherskit.com",
     "https://karnet-dev.edupoint.pl",
 ]
 

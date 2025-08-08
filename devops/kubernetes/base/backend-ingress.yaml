@@ -11,10 +11,10 @@ spec:
   ingressClassName: traefik
   tls:
   - hosts:
-    - karnetapi.edupoint.pl
+    - api.voucherskit.com
     secretName: edupoint-backend-tls
   rules:
-  - host: karnetapi.edupoint.pl
+  - host: api.voucherskit.com
     http:
       paths:
       - path: /

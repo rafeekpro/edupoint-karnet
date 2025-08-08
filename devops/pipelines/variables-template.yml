@@ -22,8 +22,8 @@ SECRET_KEY: your-app-secret-key  # Mark as secret
 
 # Domain Configuration
 DOMAIN_MAIN: edupoint.pl
-URL_API_PUBLIC: karnetapi.edupoint.pl
-URL_FRONTEND_PUBLIC: karnet.edupoint.pl
+URL_API_PUBLIC: api.voucherskit.com
+URL_FRONTEND_PUBLIC: voucherskit.com
 URL_API_LOCAL: karnetapi-dev.edupoint.pl
 URL_FRONTEND_LOCAL: karnet-dev.edupoint.pl
 ADMIN_EMAIL: admin@edupoint.pl
@@ -37,8 +37,8 @@ DEPLOY_TIMEOUT: 600
 ROLLBACK_ON_FAILURE: true
 
 # E2E Test Configuration
-E2E_BASE_URL: https://karnet.edupoint.pl
-E2E_API_URL: https://karnetapi.edupoint.pl
+E2E_BASE_URL: https://voucherskit.com
+E2E_API_URL: https://api.voucherskit.com
 E2E_TEST_USER: test@edupoint.pl
 E2E_TEST_PASSWORD: test-password  # Mark as secret
 

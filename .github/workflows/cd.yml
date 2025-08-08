@@ -31,7 +31,7 @@ on:
         type: boolean
   
   workflow_run:
-    workflows: ["🔨 CI - Build and Push Images"]
+    workflows: ["CI - Build and Push Images"]
     types:
       - completed
     branches: [main]
@@ -49,48 +49,48 @@ jobs:
     
     steps:
     # ===========================================
-    # 📦 SETUP: Repository and Dependencies
+    # SETUP: Repository and Dependencies
     # ===========================================
     
-    - name: 📦 Checkout repository
+    - name: Checkout repository
       uses: actions/checkout@v4
     
-    - name: 🔐 Login to GitHub Container Registry
+    - name: Login to GitHub Container Registry
       uses: docker/login-action@v3
       with:
         registry: ghcr.io
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
     
-    - name: 🏷️ Determine image tag
+    - name: Determine image tag
       id: determine-tag
       run: |
-        echo "📋 Triggered by: ${{ github.event_name }}"
+        echo "Triggered by: ${{ github.event_name }}"
         if [ "${{ github.event_name }}" == "workflow_run" ]; then
-          echo "🔗 CI Workflow: ${{ github.event.workflow_run.name }}"
-          echo "✅ CI Status: ${{ github.event.workflow_run.conclusion }}"
-          echo "🆔 CI Run ID: ${{ github.event.workflow_run.id }}"
+          echo "CI Workflow: ${{ github.event.workflow_run.name }}"
+          echo "CI Status: ${{ github.event.workflow_run.conclusion }}"
+          echo "CI Run ID: ${{ github.event.workflow_run.id }}"
           # Get the tag from the CI workflow run (use short SHA)
           SHORT_SHA=$(echo "${{ github.event.workflow_run.head_sha }}" | cut -c1-7)
           echo "IMAGE_TAG=${{ github.event.workflow_run.id }}-${SHORT_SHA}" >> $GITHUB_OUTPUT
-          echo "✅ Using CI workflow tag: ${{ github.event.workflow_run.id }}-${SHORT_SHA}"
+          echo "Using CI workflow tag: ${{ github.event.workflow_run.id }}-${SHORT_SHA}"
         elif [ -n "${{ inputs.image-tag }}" ]; then
           # Use the provided tag
           echo "IMAGE_TAG=${{ inputs.image-tag }}" >> $GITHUB_OUTPUT
-          echo "✅ Using provided tag: ${{ inputs.image-tag }}"
+          echo "Using provided tag: ${{ inputs.image-tag }}"
         else
           # Default to main tag when no specific tag is provided
           echo "IMAGE_TAG=main" >> $GITHUB_OUTPUT
-          echo "✅ Using default tag: main"
+          echo "Using default tag: main"
         fi
         
-        echo "📌 Selected image tag: $(cat $GITHUB_OUTPUT | grep IMAGE_TAG | cut -d= -f2)"
+        echo "Selected image tag: $(cat $GITHUB_OUTPUT | grep IMAGE_TAG | cut -d= -f2)"
     
     # ===========================================
-    # 🔧 TOOLS: Install Required CLI Tools
+    # TOOLS: Install Required CLI Tools
     # ===========================================
     
-    - name: 🔧 Install kubectl
+    - name: Install kubectl
       run: |
         curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
         chmod +x ./kubectl
@@ -98,15 +98,15 @@ jobs:
         kubectl version --client
     
     # ===========================================
-    # 🔐 VPN: Setup WireGuard Connection
+    # VPN: Setup WireGuard Connection
     # ===========================================
     
-    - name: 🔐 Install WireGuard
+    - name: Install WireGuard
       run: |
         sudo apt-get update
         sudo apt-get install -y wireguard-tools resolvconf
     
-    - name: 🌐 Configure WireGuard VPN
+    - name: Configure WireGuard VPN
       run: |
         # Create WireGuard configuration
         echo "${{ secrets.WIREGUARD_CONFIG }}" | base64 -d | sudo tee /etc/wireguard/wg0.conf > /dev/null
@@ -122,10 +122,10 @@ jobs:
         ping -c 3 10.204.200.1 || echo "Cannot ping VPN gateway"
     
     # ===========================================
-    # ☸️ KUBERNETES: Configure Access
+    # KUBERNETES: Configure Access
     # ===========================================
     
-    - name: ☸️ Configure kubectl
+    - name: Configure kubectl
       run: |
         # Create .kube directory
         mkdir -p $HOME/.kube
@@ -157,10 +157,10 @@ jobs:
         chmod 600 $HOME/.kube/config
 
     # ===========================================
-    # 🔍 DIAGNOSTICS: Network and Connectivity
+    # DIAGNOSTICS: Network and Connectivity
     # ===========================================
     
-    - name: 🔍 Test network connectivity
+    - name: Test network connectivity
       run: |
         echo "=== Network diagnostics ==="
         ip addr show
@@ -173,7 +173,7 @@ jobs:
         # Test API K8s z opcją -k, aby pominąć błędy certyfikatu
         curl -k https://10.204.200.1:6443/version || echo "Cannot reach K8s API"
 
-    - name: ✅ Test kubectl connection
+    - name: Test kubectl connection
       run: |
         kubectl version --client
         # Teraz powinno działać, bo adres w kubeconfig jest poprawny
@@ -182,10 +182,10 @@ jobs:
 
 
     # ===========================================
-    # 🚀 DEPLOYMENT PREPARATION
+    # DEPLOYMENT PREPARATION
     # ===========================================
     
-    - name: 🔒 Create GitHub Container Registry secret
+    - name: Create GitHub Container Registry secret
       run: |
         kubectl create secret docker-registry ghcr-secret \
           --namespace=${{ env.NAMESPACE }} \
@@ -194,7 +194,7 @@ jobs:
           --docker-password=${{ secrets.GITHUB_TOKEN }} \
           --dry-run=client -o yaml | kubectl apply -f -
     
-    - name: 🌐 Install Traefik CRDs
+    - name: Install Traefik CRDs
       run: |
         # Check if Traefik CRDs are installed (check both old and new API versions)
         if ! kubectl get crd middlewares.traefik.io > /dev/null 2>&1; then
@@ -204,7 +204,7 @@ jobs:
           echo "Traefik CRDs already installed"
         fi
     
-    - name: 🔐 Create application secrets
+    - name: Create application secrets
       run: |
         kubectl delete secret edupoint-prod-secrets \
           --namespace=${{ env.NAMESPACE }} \
@@ -216,30 +216,30 @@ jobs:
           --from-literal=JWT_SECRET_KEY="${{ secrets.JWT_SECRET_KEY_PROD }}"
     
     # ===========================================
-    # 🎯 BACKEND DEPLOYMENT
+    # BACKEND DEPLOYMENT
     # ===========================================
     
-    - name: 🎯 Deploy Backend
+    - name: Deploy Backend
       if: ${{ (github.event_name == 'workflow_dispatch' && inputs.deploy-backend) || github.event_name == 'workflow_run' }}
       run: |
         cd devops/kubernetes/overlays/prod
         
         # Debug: Show selected image tag
-        echo "📦 Deploying backend with tag: ${{ steps.determine-tag.outputs.IMAGE_TAG }}"
+        echo "Deploying backend with tag: ${{ steps.determine-tag.outputs.IMAGE_TAG }}"
         
         # Build the image URL
         IMAGE_URL="ghcr.io/${{ env.IMAGE_NAME }}/backend:${{ steps.determine-tag.outputs.IMAGE_TAG }}"
-        echo "🔍 Image URL: $IMAGE_URL"
+        echo "Image URL: $IMAGE_URL"
         
         # Try to verify image exists (may fail after VPN but continue anyway)
         if docker manifest inspect $IMAGE_URL 2>/dev/null; then
-          echo "✅ Image verified successfully!"
+          echo "Image verified successfully!"
         else
-          echo "⚠️ Could not verify image (may be due to VPN), proceeding with deployment..."
+          echo "Could not verify image (may be due to VPN), proceeding with deployment..."
         fi
         
         # Clean up old resources
-        echo "🧹 Cleaning up old resources..."
+        echo "Cleaning up old resources..."
         kubectl delete secret edupoint-prod-secrets-7d4tmdc2bb -n ${{ env.NAMESPACE }} --ignore-not-found=true
         kubectl delete secret edupoint-secrets-mh7k42h6f7 -n ${{ env.NAMESPACE }} --ignore-not-found=true
         
@@ -248,44 +248,44 @@ jobs:
           ghcr.io/rafeekpro/edupoint-backend-prod=$IMAGE_URL
         
         # Build and apply
-        echo "🚀 Applying Kubernetes manifests..."
+        echo "Applying Kubernetes manifests..."
         kustomize build . | kubectl apply -f -
         
         # Wait for rollout with debug info
-        echo "⏳ Waiting for deployment rollout..."
+        echo "Waiting for deployment rollout..."
         kubectl rollout status deployment/edupoint-backend -n ${{ env.NAMESPACE }} --timeout=300s || {
-          echo "❌ Deployment failed, checking pod status..."
+          echo "Deployment failed, checking pod status..."
           kubectl get pods -n ${{ env.NAMESPACE }} -l app=edupoint-backend
-          echo "📋 Checking pod events..."
+          echo "Checking pod events..."
           kubectl describe pods -n ${{ env.NAMESPACE }} -l app=edupoint-backend | tail -50
-          echo "📝 Checking pod logs..."
+          echo "Checking pod logs..."
           kubectl logs -n ${{ env.NAMESPACE }} -l app=edupoint-backend --tail=50 || true
           exit 1
         }
         
-        echo "✅ Backend deployment completed successfully!"
+        echo "Backend deployment completed successfully!"
     
     # ===========================================
-    # 🌐 FRONTEND DEPLOYMENT  
+    # FRONTEND DEPLOYMENT  
     # ===========================================
     
-    - name: 🌐 Deploy Frontend
+    - name: Deploy Frontend
       if: ${{ (github.event_name == 'workflow_dispatch' && inputs.deploy-frontend) || github.event_name == 'workflow_run' }}
       run: |
         cd devops/kubernetes/overlays/prod
         
         # Debug: Show selected image tag
-        echo "📦 Deploying frontend with tag: ${{ steps.determine-tag.outputs.IMAGE_TAG }}"
+        echo "Deploying frontend with tag: ${{ steps.determine-tag.outputs.IMAGE_TAG }}"
         
         # Build the image URL
         IMAGE_URL="ghcr.io/${{ env.IMAGE_NAME }}/frontend:${{ steps.determine-tag.outputs.IMAGE_TAG }}"
-        echo "🔍 Image URL: $IMAGE_URL"
+        echo "Image URL: $IMAGE_URL"
         
         # Try to verify image exists (may fail after VPN but continue anyway)
         if docker manifest inspect $IMAGE_URL 2>/dev/null; then
-          echo "✅ Image verified successfully!"
+          echo "Image verified successfully!"
         else
-          echo "⚠️ Could not verify image (may be due to VPN), proceeding with deployment..."
+          echo "Could not verify image (may be due to VPN), proceeding with deployment..."
         fi
         
         # Update image tag
@@ -293,28 +293,28 @@ jobs:
           ghcr.io/rafeekpro/edupoint-frontend-prod=$IMAGE_URL
         
         # Build and apply
-        echo "🚀 Applying Kubernetes manifests..."
+        echo "Applying Kubernetes manifests..."
         kustomize build . | kubectl apply -f -
         
         # Wait for rollout with debug info
-        echo "⏳ Waiting for deployment rollout..."
+        echo "Waiting for deployment rollout..."
         kubectl rollout status deployment/edupoint-frontend -n ${{ env.NAMESPACE }} --timeout=300s || {
-          echo "❌ Deployment failed, checking pod status..."
+          echo "Deployment failed, checking pod status..."
           kubectl get pods -n ${{ env.NAMESPACE }} -l app=edupoint-frontend
-          echo "📋 Checking pod events..."
+          echo "Checking pod events..."
           kubectl describe pods -n ${{ env.NAMESPACE }} -l app=edupoint-frontend | tail -50
-          echo "📝 Checking pod logs..."
+          echo "Checking pod logs..."
           kubectl logs -n ${{ env.NAMESPACE }} -l app=edupoint-frontend --tail=50 || true
           exit 1
         }
         
-        echo "✅ Frontend deployment completed successfully!"
+        echo "Frontend deployment completed successfully!"
     
     # ===========================================
-    # ✅ VERIFICATION: Deployment Status
+    # VERIFICATION: Deployment Status
     # ===========================================
     
-    - name: ✅ Verify deployment
+    - name: Verify deployment
       run: |
         echo "### Deployment Status" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
@@ -367,8 +367,8 @@ jobs:
     - name: Run E2E tests
       run: |
         cd e2e-tests
-        export BASE_URL=https://karnet.edupoint.pl
-        export API_URL=https://karnetapi.edupoint.pl
+        export BASE_URL=https://voucherskit.com
+        export API_URL=https://api.voucherskit.com
         npm test
     
     - name: Upload test results

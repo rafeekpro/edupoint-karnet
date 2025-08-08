@@ -9,7 +9,7 @@ RUN npm ci --only=production
 COPY . .
 
 # Set the API URL for production build
-ARG REACT_APP_API_URL=https://karnetapi.edupoint.pl
+ARG REACT_APP_API_URL=https://api.voucherskit.com
 ENV REACT_APP_API_URL=$REACT_APP_API_URL
 
 RUN npm run build

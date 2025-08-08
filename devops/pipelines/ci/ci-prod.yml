@@ -166,7 +166,7 @@ stages:
           cd frontend
           
           # Set API URL for production
-          API_URL="https://karnetapi.edupoint.pl"
+          API_URL="https://api.voucherskit.com"
           
           # Extract short SHA for version tag
           SHORT_SHA=$(echo $(Build.SourceVersion) | cut -c1-7)

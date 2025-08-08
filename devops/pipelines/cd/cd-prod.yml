@@ -617,8 +617,8 @@ stages:
     
     - script: |
         cd e2e-tests
-        export BASE_URL=https://karnet.edupoint.pl
-        export API_URL=https://karnetapi.edupoint.pl
+        export BASE_URL=https://voucherskit.com
+        export API_URL=https://api.voucherskit.com
         npm test
       displayName: 'Run E2E Tests'
     

@@ -39,8 +39,8 @@ spec:
       - "Authorization"
       - "Content-Type"
     accessControlAllowOriginList:
-      - "https://karnet.edupoint.pl"
-      - "https://www.karnet.edupoint.pl"
+      - "https://voucherskit.com"
+      - "https://www.voucherskit.com"
       - "http://localhost:3000"
     accessControlMaxAge: 100
     addVaryHeader: true

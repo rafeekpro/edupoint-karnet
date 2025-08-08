@@ -8,8 +8,8 @@ The Kubernetes deployment is configured to use Traefik ingress controller with t
 - CORS headers for API endpoints
 
 ### Domains
-- Frontend: https://karnet.edupoint.pl
-- Backend API: https://karnetapi.edupoint.pl
+- Frontend: https://voucherskit.com
+- Backend API: https://api.voucherskit.com
 
 ### Middleware Configuration
 1. **redirect-to-https**: Forces all HTTP traffic to HTTPS
