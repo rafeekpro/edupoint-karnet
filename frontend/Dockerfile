@@ -12,6 +12,10 @@ RUN npm ci
 # Copy the rest of the application
 COPY . .
 
+# Set build-time environment variables
+ARG REACT_APP_API_URL=https://api.voucherskit.com
+ENV REACT_APP_API_URL=$REACT_APP_API_URL
+
 # Build the application
 RUN npm run build
 
