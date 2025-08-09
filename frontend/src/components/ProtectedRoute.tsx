@@ -1,6 +1,6 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { Box, CircularProgress } from '@mui/material';
+import { Spinner } from '@nextui-org/react';
 import { useAuth } from '../contexts/AuthContext';
 
 interface ProtectedRouteProps {
@@ -14,9 +14,9 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, role }) => {
 
   if (isLoading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
-        <CircularProgress />
-      </Box>
+      <div className="flex justify-center items-center min-h-screen">
+        <Spinner size="lg" label="Loading..." />
+      </div>
     );
   }
 
@@ -26,9 +26,9 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, role }) => {
 
   if (role && user.role !== role) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
-        <h1>Access Denied</h1>
-      </Box>
+      <div className="flex justify-center items-center min-h-screen">
+        <h1 className="text-2xl font-bold text-danger">Access Denied</h1>
+      </div>
     );
   }
 

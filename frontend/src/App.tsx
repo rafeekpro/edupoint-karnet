@@ -1,9 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
-import CssBaseline from '@mui/material/CssBaseline';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { NextUIProvider } from '@nextui-org/react';
 import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
@@ -25,25 +22,12 @@ import TherapistSessions from './pages/therapist/Sessions';
 import TherapistCalendar from './pages/therapist/Calendar';
 import TherapistClients from './pages/therapist/Clients';
 
-const theme = createTheme({
-  palette: {
-    primary: {
-      main: '#2196f3',
-    },
-    secondary: {
-      main: '#f50057',
-    },
-  },
-});
-
 function App() {
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <LocalizationProvider dateAdapter={AdapterDateFns}>
-        <Router>
-          <AuthProvider>
-            <Routes>
+    <NextUIProvider>
+      <Router>
+        <AuthProvider>
+          <Routes>
             <Route path="/" element={<Layout />}>
               <Route index element={<HomePage />} />
               <Route path="login" element={<LoginPage />} />
@@ -161,8 +145,7 @@ function App() {
           </Routes>
         </AuthProvider>
       </Router>
-    </LocalizationProvider>
-    </ThemeProvider>
+    </NextUIProvider>
   );
 }
 
