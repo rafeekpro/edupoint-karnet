@@ -1,0 +1,39 @@
+name: Cleanup Old Package Versions
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * 0' # Weekly on Sunday
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+    - name: Delete old frontend packages
+      uses: actions/delete-package-versions@v4
+      with:
+        package-name: 'edupoint-karnet/frontend'
+        package-type: 'container'
+        min-versions-to-keep: 3
+        delete-only-pre-release-versions: false
+        token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Delete old backend packages
+      uses: actions/delete-package-versions@v4
+      with:
+        package-name: 'edupoint-karnet/backend'
+        package-type: 'container'
+        min-versions-to-keep: 3
+        delete-only-pre-release-versions: false
+        token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Delete old e2e-tests packages
+      uses: actions/delete-package-versions@v4
+      with:
+        package-name: 'edupoint-karnet/e2e-tests'
+        package-type: 'container'
+        min-versions-to-keep: 3
+        delete-only-pre-release-versions: false
+        token: ${{ secrets.GITHUB_TOKEN }}
