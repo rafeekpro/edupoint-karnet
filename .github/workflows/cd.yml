@@ -343,6 +343,51 @@ jobs:
       run: |
         sudo wg-quick down wg0 || true
 
+  cleanup-old-images:
+    name: Cleanup Old Docker Images
+    runs-on: ubuntu-latest
+    needs: setup-vpn-and-deploy
+    if: always()
+    permissions:
+      packages: write
+    
+    steps:
+    - name: Cleanup old frontend images
+      uses: actions/delete-package-versions@v4
+      with:
+        package-name: 'edupoint-karnet/frontend'
+        package-type: 'container'
+        min-versions-to-keep: 5
+        delete-only-pre-release-versions: false
+        delete-only-untagged-versions: false
+        token: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Cleanup old backend images
+      uses: actions/delete-package-versions@v4
+      with:
+        package-name: 'edupoint-karnet/backend'
+        package-type: 'container'
+        min-versions-to-keep: 5
+        delete-only-pre-release-versions: false
+        delete-only-untagged-versions: false
+        token: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Cleanup old e2e-tests images
+      uses: actions/delete-package-versions@v4
+      with:
+        package-name: 'edupoint-karnet/e2e-tests'
+        package-type: 'container'
+        min-versions-to-keep: 5
+        delete-only-pre-release-versions: false
+        delete-only-untagged-versions: false
+        token: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Summary
+      run: |
+        echo "### 🧹 Cleanup Complete" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "Old Docker images have been cleaned up. Keeping last 5 versions of each package." >> $GITHUB_STEP_SUMMARY
+
   run-e2e-tests:
     name: Run E2E Tests
     runs-on: ubuntu-latest
