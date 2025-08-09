@@ -5,7 +5,7 @@
 System został rozszerzony o obsługę Docker Compose oraz bazę danych MySQL. Struktura projektu zawiera:
 
 - **Backend**: FastAPI z SQLAlchemy i MySQL
-- **Frontend**: React z TypeScript i Material-UI
+- **Frontend**: React z TypeScript i NextUI
 - **Baza danych**: MySQL 8.0
 - **Proxy**: Nginx dla routingu
 
