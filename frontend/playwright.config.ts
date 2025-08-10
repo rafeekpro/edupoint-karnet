@@ -51,6 +51,7 @@ export default defineConfig({
         storageState: 'playwright/.auth/client.json',
       },
       testIgnore: /auth\.setup\.ts/,
+      dependencies: ['setup'],
     },
     {
       name: 'ui-therapist',
@@ -59,6 +60,7 @@ export default defineConfig({
         storageState: 'playwright/.auth/therapist.json',
       },
       testIgnore: /auth\.setup\.ts/,
+      dependencies: ['setup'],
     },
     {
       name: 'ui-admin',
@@ -67,6 +69,7 @@ export default defineConfig({
         storageState: 'playwright/.auth/admin.json',
       },
       testIgnore: /auth\.setup\.ts/,
+      dependencies: ['setup'],
     },
 
     /* Commented out for stability - can be enabled if needed
