@@ -184,11 +184,11 @@ test.describe('Admin Dashboard - User Management Integration', () => {
     await page.click('text=Manage Users');
     await page.waitForURL('/admin/users');
     
-    // Count users with pending status if visible
-    // This would need to match your actual implementation
-    if (pendingCount !== '0') {
-      const pendingUsers = page.locator('text=Pending, text=Not Approved, text=Inactive').first();
-      await expect(pendingUsers).toBeVisible();
+    // If there are pending users, check for inactive users
+    // (pending approvals are typically inactive users)
+    if (pendingCount !== '0' && parseInt(pendingCount || '0') > 0) {
+      const inactiveUsers = page.locator('text=Inactive').first();
+      await expect(inactiveUsers).toBeVisible();
     }
   });
 });
