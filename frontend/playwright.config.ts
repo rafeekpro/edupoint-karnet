@@ -43,12 +43,28 @@ export default defineConfig({
       dependencies: ['setup'],
     },
 
-    // Project for UI mode - doesn't depend on setup since we run it manually
+    // Projects for UI mode - different roles
     {
-      name: 'chromium-ui',
+      name: 'ui-client',
       use: {
         ...devices['Desktop Chrome'],
-        storageState: 'playwright/.auth/user.json',
+        storageState: 'playwright/.auth/client.json',
+      },
+      testIgnore: /auth\.setup\.ts/,
+    },
+    {
+      name: 'ui-therapist',
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'playwright/.auth/therapist.json',
+      },
+      testIgnore: /auth\.setup\.ts/,
+    },
+    {
+      name: 'ui-admin',
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'playwright/.auth/admin.json',
       },
       testIgnore: /auth\.setup\.ts/,
     },

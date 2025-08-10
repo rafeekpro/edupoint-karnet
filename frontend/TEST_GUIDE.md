@@ -12,7 +12,11 @@ npm run test:setup
 ```bash
 npm run test:e2e:ui
 ```
-W trybie UI wybierz projekt "chromium-ui" z listy projektów.
+
+**WAŻNE: Wybierz odpowiedni projekt w zależności od tego, jaką stronę testujesz:**
+- `ui-client` - dla testowania stron klienta (/client/*)
+- `ui-therapist` - dla testowania stron terapeuty (/therapist/*)
+- `ui-admin` - dla testowania stron administratora (/admin/*)
 
 ### Tryb headless (bez interfejsu)
 ```bash
@@ -37,10 +41,18 @@ Jeśli testy nie są zalogowane, uruchom:
 npm run test:setup
 ```
 
+### Błąd "Access Denied" w testach
+Ten błąd występuje, gdy próbujesz testować stronę z niewłaściwą rolą użytkownika.
+
+**Rozwiązanie:**
+- Dla stron `/admin/*` → wybierz projekt `ui-admin`
+- Dla stron `/therapist/*` → wybierz projekt `ui-therapist`
+- Dla stron `/client/*` → wybierz projekt `ui-client`
+
 ### Testy w trybie UI nie działają
 1. Uruchom `npm run test:setup`
 2. Uruchom `npm run test:e2e:ui`
-3. W interfejsie UI wybierz projekt "chromium-ui"
+3. W interfejsie UI wybierz odpowiedni projekt dla twojej roli
 
 ### Czyszczenie cache autoryzacji
 ```bash
