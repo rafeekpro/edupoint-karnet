@@ -18,15 +18,19 @@ test.describe('Admin Dashboard', () => {
   });
 
   test('should display stats cards with data', async ({ page }) => {
-    // Check if all stats cards are visible
-    await expect(page.locator('text=Total Users')).toBeVisible();
-    await expect(page.locator('text=Active Users')).toBeVisible();
-    await expect(page.locator('text=Pending Approvals')).toBeVisible();
-    await expect(page.locator('text=Organizations')).toBeVisible();
+    // Check if all stats cards are visible - use more specific selectors
+    const statsSection = page.locator('[data-testid="stats-cards"], .grid').first();
+    await expect(statsSection.locator('text=Total Users')).toBeVisible();
+    await expect(statsSection.locator('text=Active Users')).toBeVisible();
+    await expect(statsSection.locator('text=Pending Approvals')).toBeVisible();
+    
+    // For Organizations, be more specific since it appears multiple times
+    const orgCard = statsSection.locator('div:has-text("Organizations")').first();
+    await expect(orgCard).toBeVisible();
 
     // Check that stats have numeric values (not just labels)
-    const totalUsersCard = page.locator('div:has(> div:has-text("Total Users"))');
-    const totalUsersValue = await totalUsersCard.locator('.text-2xl').textContent();
+    const totalUsersCard = statsSection.locator('div:has-text("Total Users")').first();
+    const totalUsersValue = await totalUsersCard.locator('.text-2xl').first().textContent();
     expect(totalUsersValue).toMatch(/^\d+$/); // Should be a number
   });
 
@@ -42,8 +46,9 @@ test.describe('Admin Dashboard', () => {
     ];
 
     for (const action of quickActions) {
-      // Check if action card is visible
-      const actionCard = page.locator(`div:has(div:has-text("${action.title}"))`).first();
+      // Check if action card is visible - use more specific selector
+      const quickActionsSection = page.locator('section:has(h2:has-text("Quick Actions"))');
+      const actionCard = quickActionsSection.locator(`div:has(h3:has-text("${action.title}"))`).first();
       await expect(actionCard).toBeVisible();
       
       // Click on the card and verify navigation
