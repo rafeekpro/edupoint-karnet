@@ -43,6 +43,16 @@ export default defineConfig({
       dependencies: ['setup'],
     },
 
+    // Project for UI mode - doesn't depend on setup since we run it manually
+    {
+      name: 'chromium-ui',
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'playwright/.auth/user.json',
+      },
+      testIgnore: /auth\.setup\.ts/,
+    },
+
     /* Commented out for stability - can be enabled if needed
     {
       name: 'firefox',
