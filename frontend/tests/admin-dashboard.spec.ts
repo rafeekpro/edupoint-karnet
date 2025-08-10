@@ -2,13 +2,11 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Admin Dashboard', () => {
   test.beforeEach(async ({ page }) => {
-    // Login as admin before each test
-    await page.goto('/login');
-    await page.fill('input[type="email"]', 'admin@voucherskit.com');
-    await page.fill('input[type="password"]', 'admin123');
-    await page.click('button[type="submit"]');
-    await page.waitForURL('/admin/dashboard');
+    // Navigate to dashboard - already authenticated via ui-admin project
+    await page.goto('/admin/dashboard');
     await page.waitForLoadState('networkidle');
+    // Wait for dashboard to be fully loaded
+    await expect(page.locator('text=Welcome back')).toBeVisible({ timeout: 10000 });
   });
 
   test('should display welcome message with admin name', async ({ page }) => {
@@ -152,12 +150,11 @@ test.describe('Admin Dashboard', () => {
 
 test.describe('Admin Dashboard - User Management Integration', () => {
   test.beforeEach(async ({ page }) => {
-    // Login as admin
-    await page.goto('/login');
-    await page.fill('input[type="email"]', 'admin@voucherskit.com');
-    await page.fill('input[type="password"]', 'admin123');
-    await page.click('button[type="submit"]');
-    await page.waitForURL('/admin/dashboard');
+    // Navigate to dashboard - already authenticated via ui-admin project
+    await page.goto('/admin/dashboard');
+    await page.waitForLoadState('networkidle');
+    // Wait for dashboard to be fully loaded
+    await expect(page.locator('text=Welcome back')).toBeVisible({ timeout: 10000 });
   });
 
   test('should navigate to users page and display user list', async ({ page }) => {
@@ -197,8 +194,12 @@ test.describe('Admin Dashboard - Data Persistence', () => {
     await page.goto('/admin/dashboard');
     await page.waitForLoadState('networkidle');
     
-    // Get initial stats
+    // Wait for the dashboard to fully load
+    await expect(page.locator('text=Welcome back')).toBeVisible({ timeout: 10000 });
+    
+    // Get initial stats - wait for element to be visible first
     const totalUsersCard = page.locator(':has-text("Total Users")').first();
+    await expect(totalUsersCard).toBeVisible({ timeout: 10000 });
     const initialUsers = await totalUsersCard.locator('.text-2xl').first().textContent();
     
     // Navigate to users page instead (Organizations might not be implemented)
