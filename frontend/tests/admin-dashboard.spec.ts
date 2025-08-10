@@ -99,9 +99,10 @@ test.describe('Admin Dashboard', () => {
   });
 
   test('should refresh stats when navigating back from users page', async ({ page }) => {
-    // Get initial user count
-    const totalUsersCard = page.locator('div:has(> div:has-text("Total Users"))');
-    const initialCount = await totalUsersCard.locator('.text-2xl').textContent();
+    // Get initial user count - use more specific selector
+    const statsSection = page.locator('[data-testid="stats-cards"], .grid').first();
+    const totalUsersCard = statsSection.locator('div:has-text("Total Users")').first();
+    const initialCount = await totalUsersCard.locator('.text-2xl').first().textContent();
     
     // Navigate to users page and back
     await page.click('text=Manage Users');
@@ -110,7 +111,8 @@ test.describe('Admin Dashboard', () => {
     await page.waitForURL('/admin/dashboard');
     
     // Check that stats are still displayed (data persistence)
-    const newCount = await totalUsersCard.locator('.text-2xl').textContent();
+    const newTotalUsersCard = statsSection.locator('div:has-text("Total Users")').first();
+    const newCount = await newTotalUsersCard.locator('.text-2xl').first().textContent();
     expect(newCount).toBeTruthy();
   });
 
@@ -174,8 +176,9 @@ test.describe('Admin Dashboard - User Management Integration', () => {
 
   test('should show pending approvals count that matches dashboard', async ({ page }) => {
     // Get pending approvals count from dashboard
-    const pendingCard = page.locator('div:has(> div:has-text("Pending Approvals"))');
-    const pendingCount = await pendingCard.locator('.text-2xl').textContent();
+    const statsSection = page.locator('[data-testid="stats-cards"], .grid').first();
+    const pendingCard = statsSection.locator('div:has-text("Pending Approvals")').first();
+    const pendingCount = await pendingCard.locator('.text-2xl').first().textContent();
     
     // Navigate to users page
     await page.click('text=Manage Users');
@@ -200,8 +203,9 @@ test.describe('Admin Dashboard - Data Persistence', () => {
     await page.waitForURL('/admin/dashboard');
     
     // Get initial stats
-    const totalUsersCard = page.locator('div:has(> div:has-text("Total Users"))');
-    const initialUsers = await totalUsersCard.locator('.text-2xl').textContent();
+    const statsSection = page.locator('[data-testid="stats-cards"], .grid').first();
+    const totalUsersCard = statsSection.locator('div:has-text("Total Users")').first();
+    const initialUsers = await totalUsersCard.locator('.text-2xl').first().textContent();
     
     // Navigate away and come back
     await page.click('text=Organizations');
@@ -210,7 +214,9 @@ test.describe('Admin Dashboard - Data Persistence', () => {
     await page.waitForURL('/admin/dashboard');
     
     // Stats should be the same or updated (not empty)
-    const currentUsers = await totalUsersCard.locator('.text-2xl').textContent();
+    const newStatsSection = page.locator('[data-testid="stats-cards"], .grid').first();
+    const newTotalUsersCard = newStatsSection.locator('div:has-text("Total Users")').first();
+    const currentUsers = await newTotalUsersCard.locator('.text-2xl').first().textContent();
     expect(currentUsers).toBeTruthy();
     expect(parseInt(currentUsers || '0')).toBeGreaterThanOrEqual(0);
   });
