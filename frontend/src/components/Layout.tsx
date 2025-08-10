@@ -1,18 +1,17 @@
 import React from 'react';
-import { Outlet, useNavigate } from 'react-router-dom';
-import {
-  Navbar,
-  NavbarBrand,
-  NavbarContent,
-  NavbarItem,
-  Button,
-  Dropdown,
-  DropdownTrigger,
-  DropdownMenu,
-  DropdownItem,
-  Avatar,
-} from '@nextui-org/react';
+import { Outlet, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { Button } from './ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from './ui/dropdown-menu';
+import { User, LogOut, LayoutDashboard, Home } from 'lucide-react';
 
 const Layout: React.FC = () => {
   const { user, logout } = useAuth();
@@ -24,72 +23,86 @@ const Layout: React.FC = () => {
     }
   };
 
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(word => word[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
   return (
     <div className="flex flex-col min-h-screen">
-      <Navbar isBordered>
-        <NavbarBrand
-          className="cursor-pointer"
-          onClick={() => navigate('/')}
-        >
-          <p className="font-bold text-inherit">Therapy System</p>
-        </NavbarBrand>
-        
-        <NavbarContent justify="end">
-          {user ? (
-            <Dropdown placement="bottom-end">
-              <DropdownTrigger>
-                <Avatar
-                  as="button"
-                  className="transition-transform"
-                  name={user.name}
-                  size="sm"
-                  showFallback
-                />
-              </DropdownTrigger>
-              <DropdownMenu aria-label="Profile Actions" variant="flat">
-                <DropdownItem key="profile" className="h-14 gap-2" textValue="Profile">
-                  <p className="font-semibold">{user.name}</p>
-                  <p className="text-sm text-default-500">{user.role}</p>
-                </DropdownItem>
-                <DropdownItem 
-                  key="dashboard" 
-                  onClick={navigateToDashboard}
-                  textValue="Dashboard"
-                >
-                  Dashboard
-                </DropdownItem>
-                <DropdownItem 
-                  key="logout" 
-                  color="danger" 
-                  onClick={logout}
-                  textValue="Logout"
-                >
-                  Logout
-                </DropdownItem>
+      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container flex h-14 items-center">
+          <div className="mr-4 flex">
+            <Link to="/" className="mr-6 flex items-center space-x-2">
+              <Home className="h-6 w-6" />
+              <span className="hidden font-bold sm:inline-block">
+                VouchersKit
+              </span>
+            </Link>
+          </div>
+          
+          <div className="flex flex-1 items-center justify-end space-x-2">
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src="/placeholder-avatar.jpg" alt={user.name} />
+                      <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56" align="end" forceMount>
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">{user.name}</p>
+                      <p className="text-xs leading-none text-muted-foreground">
+                        {user.email}
+                      </p>
+                      <p className="text-xs leading-none text-muted-foreground capitalize">
+                        {user.role}
+                      </p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={navigateToDashboard}>
+                    <LayoutDashboard className="mr-2 h-4 w-4" />
+                    <span>Dashboard</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem>
+                    <User className="mr-2 h-4 w-4" />
+                    <span>Profile</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={logout} className="text-red-600">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Log out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
               </DropdownMenu>
-            </Dropdown>
-          ) : (
-            <NavbarItem>
-              <Button
-                color="primary"
-                variant="flat"
-                onClick={() => navigate('/login')}
-              >
-                Login
+            ) : (
+              <Button onClick={() => navigate('/login')}>
+                Sign in
               </Button>
-            </NavbarItem>
-          )}
-        </NavbarContent>
-      </Navbar>
+            )}
+          </div>
+        </div>
+      </header>
       
-      <main className="flex-1 container mx-auto px-4 py-6">
-        <Outlet />
+      <main className="flex-1">
+        <div className="container py-6">
+          <Outlet />
+        </div>
       </main>
       
-      <footer className="bg-gray-100 py-6 px-4 mt-auto">
-        <div className="container mx-auto text-center">
-          <p className="text-sm text-gray-600">
-            © 2024 Therapy System. All rights reserved.
+      <footer className="border-t py-6 md:py-0">
+        <div className="container flex flex-col items-center justify-between gap-4 md:h-14 md:flex-row">
+          <p className="text-center text-sm leading-loose text-muted-foreground md:text-left">
+            © 2024 VouchersKit. All rights reserved.
           </p>
         </div>
       </footer>

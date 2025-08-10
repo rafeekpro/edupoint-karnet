@@ -1,7 +1,12 @@
 import React, { useState } from 'react';
-import { Card, CardBody, CardHeader, Input, Button, Divider, Chip } from '@nextui-org/react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../components/ui/card';
+import { Input } from '../components/ui/input';
+import { Button } from '../components/ui/button';
+import { Label } from '../components/ui/label';
+import { Alert, AlertDescription } from '../components/ui/alert';
+import { AlertCircle } from 'lucide-react';
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -20,9 +25,25 @@ const LoginPage: React.FC = () => {
     setIsLoading(true);
 
     try {
-      await login(email, password);
+      const user = await login(email, password);
+      
+      // Redirect based on role or to requested page
       if (redirect) {
         navigate(redirect);
+      } else if (user) {
+        switch (user.role) {
+          case 'admin':
+            navigate('/admin/dashboard');
+            break;
+          case 'therapist':
+            navigate('/therapist/dashboard');
+            break;
+          case 'client':
+            navigate('/client/dashboard');
+            break;
+          default:
+            navigate('/');
+        }
       }
     } catch (err) {
       setError('Incorrect email or password');
@@ -31,105 +52,108 @@ const LoginPage: React.FC = () => {
     }
   };
 
+  // Demo accounts info
+  const demoAccounts = [
+    { role: 'Admin', email: 'admin@voucherskit.com', password: 'admin123' },
+    { role: 'Therapist', email: 'therapist@voucherskit.com', password: 'therapist123' },
+    { role: 'Client', email: 'client@voucherskit.com', password: 'client123' },
+  ];
+
+  const fillDemoAccount = (email: string, password: string) => {
+    setEmail(email);
+    setPassword(password);
+    setError('');
+  };
+
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 px-4">
       <Card className="w-full max-w-md">
-        <CardHeader className="flex flex-col gap-3 pb-0 pt-6">
-          <h1 className="text-2xl font-bold text-center">Sign in</h1>
+        <CardHeader className="space-y-1">
+          <CardTitle className="text-2xl font-bold text-center">
+            Welcome to VouchersKit
+          </CardTitle>
+          <CardDescription className="text-center">
+            Enter your credentials to access your account
+          </CardDescription>
         </CardHeader>
-        <CardBody className="gap-4">
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <Chip color="danger" variant="flat" className="w-full py-2">
-                {error}
-              </Chip>
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
             )}
             
-            <Input
-              type="email"
-              label="Email Address"
-              placeholder="Enter your email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              isRequired
-              autoFocus
-              variant="bordered"
-              classNames={{
-                label: "text-black/50 dark:text-white/90",
-                input: [
-                  "bg-transparent",
-                  "text-black/90 dark:text-white/90",
-                  "placeholder:text-default-700/50 dark:placeholder:text-white/60",
-                ],
-                innerWrapper: "bg-transparent",
-                inputWrapper: [
-                  "shadow-sm",
-                  "bg-default-200/50",
-                  "dark:bg-default/60",
-                  "backdrop-blur-xl",
-                  "backdrop-saturate-200",
-                  "hover:bg-default-200/70",
-                  "dark:hover:bg-default/70",
-                  "group-data-[focused=true]:bg-default-200/50",
-                  "dark:group-data-[focused=true]:bg-default/60",
-                  "!cursor-text",
-                ],
-              }}
-            />
-            
-            <Input
-              type="password"
-              label="Password"
-              placeholder="Enter your password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              isRequired
-              variant="bordered"
-              classNames={{
-                label: "text-black/50 dark:text-white/90",
-                input: [
-                  "bg-transparent",
-                  "text-black/90 dark:text-white/90",
-                  "placeholder:text-default-700/50 dark:placeholder:text-white/60",
-                ],
-                innerWrapper: "bg-transparent",
-                inputWrapper: [
-                  "shadow-sm",
-                  "bg-default-200/50",
-                  "dark:bg-default/60",
-                  "backdrop-blur-xl",
-                  "backdrop-saturate-200",
-                  "hover:bg-default-200/70",
-                  "dark:hover:bg-default/70",
-                  "group-data-[focused=true]:bg-default-200/50",
-                  "dark:group-data-[focused=true]:bg-default/60",
-                  "!cursor-text",
-                ],
-              }}
-            />
-            
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                disabled={isLoading}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                disabled={isLoading}
+              />
+            </div>
+
             <Button 
-              type="submit"
-              color="primary"
-              size="lg"
-              isLoading={isLoading}
-              className="w-full font-semibold"
+              type="submit" 
+              className="w-full" 
+              disabled={isLoading}
             >
-              {isLoading ? 'Signing in...' : 'Sign In'}
+              {isLoading ? 'Signing in...' : 'Sign in'}
             </Button>
           </form>
-          
-          <Divider className="my-4" />
-          
-          <div className="bg-default-100 rounded-lg p-4">
-            <p className="font-semibold mb-2">Test Credentials:</p>
-            <div className="space-y-1 text-sm text-default-600">
-              <p>Admin: admin@therapy.com / admin123</p>
-              <p>Therapist: john@therapy.com / admin123</p>
-              <p>Client: client@example.com / admin123</p>
+        </CardContent>
+        <CardFooter>
+          <div className="w-full space-y-4">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">
+                  Demo Accounts
+                </span>
+              </div>
             </div>
+            
+            <div className="grid gap-2">
+              {demoAccounts.map((account) => (
+                <Button
+                  key={account.email}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fillDemoAccount(account.email, account.password)}
+                  className="justify-start"
+                  type="button"
+                >
+                  <span className="font-medium mr-2">{account.role}:</span>
+                  <span className="text-muted-foreground text-xs">{account.email}</span>
+                </Button>
+              ))}
+            </div>
+            
+            <p className="text-center text-xs text-muted-foreground">
+              Click on any demo account button to auto-fill credentials
+            </p>
           </div>
-        </CardBody>
+        </CardFooter>
       </Card>
     </div>
   );

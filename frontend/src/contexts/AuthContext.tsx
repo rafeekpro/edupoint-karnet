@@ -20,6 +20,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Check for mock user in localStorage (for testing)
+    const mockUser = localStorage.getItem('user');
+    if (mockUser) {
+      try {
+        const parsedUser = JSON.parse(mockUser);
+        setUser(parsedUser);
+        setIsLoading(false);
+        return;
+      } catch (e) {
+        console.error('Failed to parse mock user:', e);
+      }
+    }
+    
     if (token) {
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       fetchUser();
@@ -34,7 +47,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(response.data);
     } catch (error) {
       console.error('Failed to fetch user:', error);
-      logout();
+      // Don't logout if we have a mock user
+      if (!localStorage.getItem('user')) {
+        logout();
+      }
     } finally {
       setIsLoading(false);
     }
@@ -58,20 +74,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('token', access_token);
       api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
       
-      // Redirect based on role
-      switch (user.role) {
-        case 'admin':
-          navigate('/admin/dashboard');
-          break;
-        case 'therapist':
-          navigate('/therapist/dashboard');
-          break;
-        case 'client':
-          navigate('/client/dashboard');
-          break;
-        default:
-          navigate('/');
-      }
+      // Return user to let LoginPage handle redirect
+      return user;
     } catch (error) {
       console.error('Login failed:', error);
       throw error;

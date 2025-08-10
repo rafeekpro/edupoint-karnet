@@ -1,0 +1,18 @@
+{
+  "cookies": [],
+  "origins": [
+    {
+      "origin": "http://localhost:3000",
+      "localStorage": [
+        {
+          "name": "user",
+          "value": "{\"id\":2,\"email\":\"therapist@voucherskit.com\",\"name\":\"Dr. Smith\",\"role\":\"therapist\",\"token\":\"mock-therapist-token\"}"
+        },
+        {
+          "name": "token",
+          "value": "mock-therapist-token"
+        }
+      ]
+    }
+  ]
+}

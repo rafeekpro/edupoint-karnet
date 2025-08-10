@@ -384,7 +384,7 @@ jobs:
     
     - name: Summary
       run: |
-        echo "### 🧹 Cleanup Complete" >> $GITHUB_STEP_SUMMARY
+        echo "### Cleanup Complete" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "Old Docker images have been cleaned up. Keeping last 5 versions of each package." >> $GITHUB_STEP_SUMMARY
 

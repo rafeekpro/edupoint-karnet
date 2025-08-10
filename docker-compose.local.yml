@@ -1,0 +1,92 @@
+# Docker Compose for local development
+
+services:
+  # PostgreSQL Database with sample data
+  postgres:
+    image: postgres:15-alpine
+    container_name: voucherskit-postgres
+    environment:
+      POSTGRES_DB: therapy_system
+      POSTGRES_USER: therapy_user
+      POSTGRES_PASSWORD: therapy_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/database/init.sql:/docker-entrypoint-initdb.d/01-schema.sql
+      - ./backend/database/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql
+    networks:
+      - voucherskit-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U therapy_user -d therapy_system"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend API
+  backend:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: voucherskit-backend
+    environment:
+      DATABASE_URL: postgresql://therapy_user:therapy_password@postgres:5432/therapy_system
+      JWT_SECRET_KEY: development-secret-key-change-in-production
+      ENVIRONMENT: development
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: therapy_system
+      DB_USER: therapy_user
+      DB_PASSWORD: therapy_password
+      CORS_ORIGINS: http://localhost:3000
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - voucherskit-network
+
+  # Frontend React App
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+      args:
+        REACT_APP_API_URL: http://localhost:8000
+    container_name: voucherskit-frontend
+    environment:
+      REACT_APP_API_URL: http://localhost:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - voucherskit-network
+    command: npm start
+
+  # Adminer for database management
+  adminer:
+    image: adminer
+    container_name: voucherskit-adminer
+    ports:
+      - "8081:8080"  # Changed from 8080 to avoid conflicts
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+    depends_on:
+      - postgres
+    networks:
+      - voucherskit-network
+
+volumes:
+  postgres_data:
+
+networks:
+  voucherskit-network:
+    driver: bridge

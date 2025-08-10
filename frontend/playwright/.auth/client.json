@@ -1,0 +1,18 @@
+{
+  "cookies": [],
+  "origins": [
+    {
+      "origin": "http://localhost:3000",
+      "localStorage": [
+        {
+          "name": "user",
+          "value": "{\"id\":3,\"email\":\"client@voucherskit.com\",\"name\":\"John Doe\",\"role\":\"client\",\"token\":\"mock-client-token\"}"
+        },
+        {
+          "name": "token",
+          "value": "mock-client-token"
+        }
+      ]
+    }
+  ]
+}

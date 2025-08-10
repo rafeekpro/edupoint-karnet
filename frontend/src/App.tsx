@@ -1,6 +1,5 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { NextUIProvider } from '@nextui-org/react';
 import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
@@ -11,12 +10,16 @@ import LoginPage from './pages/LoginPage';
 import AdminDashboard from './pages/admin/Dashboard';
 import AdminVouchers from './pages/admin/Vouchers';
 import AdminVoucherNew from './pages/admin/VoucherNew';
-import AdminUsers from './pages/admin/Users';
+import AdminUsers from './pages/admin/UsersPage';
 import AdminClasses from './pages/admin/Classes';
+import AdminOrganizations from './pages/admin/OrganizationsPage';
+import AdminVoucherTypes from './pages/admin/VoucherTypesPage';
+import AdminSettings from './pages/admin/SettingsPage';
 import ClientDashboard from './pages/client/Dashboard';
 import ClientActivateCode from './pages/client/ActivateCode';
 import ClientSelectClass from './pages/client/SelectClass';
 import ClientCalendar from './pages/client/Calendar';
+import ClientVouchers from './pages/client/Vouchers';
 import TherapistDashboard from './pages/therapist/Dashboard';
 import TherapistSessions from './pages/therapist/Sessions';
 import TherapistCalendar from './pages/therapist/Calendar';
@@ -24,9 +27,8 @@ import TherapistClients from './pages/therapist/Clients';
 
 function App() {
   return (
-    <NextUIProvider>
-      <Router>
-        <AuthProvider>
+    <Router>
+      <AuthProvider>
           <Routes>
             <Route path="/" element={<Layout />}>
               <Route index element={<HomePage />} />
@@ -73,6 +75,30 @@ function App() {
                   </ProtectedRoute>
                 }
               />
+              <Route
+                path="admin/organizations"
+                element={
+                  <ProtectedRoute role="admin">
+                    <AdminOrganizations />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="admin/voucher-types"
+                element={
+                  <ProtectedRoute role="admin">
+                    <AdminVoucherTypes />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="admin/settings"
+                element={
+                  <ProtectedRoute role="admin">
+                    <AdminSettings />
+                  </ProtectedRoute>
+                }
+              />
               
               {/* Client routes */}
               <Route
@@ -104,6 +130,14 @@ function App() {
                 element={
                   <ProtectedRoute role="client">
                     <ClientCalendar />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="client/vouchers"
+                element={
+                  <ProtectedRoute role="client">
+                    <ClientVouchers />
                   </ProtectedRoute>
                 }
               />
@@ -143,9 +177,8 @@ function App() {
               />
             </Route>
           </Routes>
-        </AuthProvider>
-      </Router>
-    </NextUIProvider>
+      </AuthProvider>
+    </Router>
   );
 }
 

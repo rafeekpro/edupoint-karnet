@@ -5,7 +5,13 @@ from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from models import User
-from database import db
+from db_connection import db
+try:
+    from models_v2 import UserResponse
+    from db_v2 import db_v2
+    use_v2 = True
+except ImportError:
+    use_v2 = False
 
 SECRET_KEY = "your-secret-key-here-change-in-production"
 ALGORITHM = "HS256"
@@ -30,7 +36,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
-async def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
+async def get_current_user(token: str = Depends(oauth2_scheme)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -44,6 +50,21 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
     except JWTError:
         raise credentials_exception
     
+    # Try v2 database first
+    if use_v2:
+        user_dict = db_v2.get_user(int(user_id))
+        if user_dict:
+            # Convert v2 user to v1 User model for compatibility with /users/me endpoint
+            from datetime import datetime
+            return User(
+                id=str(user_dict['id']),  # Convert int to string
+                email=user_dict['email'],
+                name=user_dict['name'],
+                role=user_dict['role'],
+                created_at=user_dict.get('created_at', datetime.now()).isoformat() if isinstance(user_dict.get('created_at'), datetime) else user_dict.get('created_at')
+            )
+    
+    # Fallback to v1
     user = db.users.get(user_id)
     if user is None:
         raise credentials_exception

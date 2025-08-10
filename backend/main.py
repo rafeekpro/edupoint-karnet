@@ -9,13 +9,19 @@ from models import (
     LoginRequest, TokenResponse, VoucherGenerateRequest, ReservationRequest,
     SessionRescheduleRequest, UserRole, SessionStatus, CodeStatus
 )
-from database import MockDatabase, db
+# Use real PostgreSQL database instead of MockDatabase
+from db_connection import db
 from auth import (
     authenticate_user, create_access_token, get_current_user,
     ACCESS_TOKEN_EXPIRE_MINUTES
 )
+# Import v2 API routes
+from api_v2 import router as api_v2_router
 
-app = FastAPI(title="Therapy System API", version="1.0.0")
+app = FastAPI(title="Therapy System API", version="2.0.0")
+
+# Include v2 API routes
+app.include_router(api_v2_router)
 
 # Configure CORS
 import os
