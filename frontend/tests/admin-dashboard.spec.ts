@@ -166,8 +166,8 @@ test.describe('Admin Dashboard - User Management Integration', () => {
     await page.click('text=Manage Users');
     await page.waitForURL('/admin/users');
     
-    // Verify users page loaded
-    await expect(page.locator('h1:has-text("Users")')).toBeVisible();
+    // Verify users page loaded - CardTitle renders as a different element
+    await expect(page.locator('text=User Management')).toBeVisible();
     
     // Check if user table/list is visible
     const usersList = page.locator('table, [role="list"]').first();
