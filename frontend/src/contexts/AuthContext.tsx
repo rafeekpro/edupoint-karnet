@@ -27,13 +27,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const parsedUser = JSON.parse(mockUser);
         setUser(parsedUser);
         setIsLoading(false);
+        // If we have a mock user, don't fetch from API
         return;
       } catch (e) {
         console.error('Failed to parse mock user:', e);
       }
     }
     
-    if (token) {
+    // Only fetch from API if we have a token AND no mock user
+    if (token && !mockUser) {
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       fetchUser();
     } else {
