@@ -47,7 +47,7 @@ setup('authenticate as therapist', async ({ page }) => {
   await page.context().storageState({ path: therapistAuthFile });
 });
 
-// Setup for client user
+// Setup for client user  
 setup('authenticate as client', async ({ page }) => {
   await page.goto('/');
   
@@ -64,4 +64,6 @@ setup('authenticate as client', async ({ page }) => {
   });
   
   await page.context().storageState({ path: clientAuthFile });
+  // Also save as the default user.json for general tests
+  await page.context().storageState({ path: authFile });
 });
