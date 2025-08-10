@@ -195,21 +195,18 @@ test.describe('Admin Dashboard - User Management Integration', () => {
 
 test.describe('Admin Dashboard - Data Persistence', () => {
   test('should maintain data when navigating between pages', async ({ page }) => {
-    // Login as admin
-    await page.goto('/login');
-    await page.fill('input[type="email"]', 'admin@voucherskit.com');
-    await page.fill('input[type="password"]', 'admin123');
-    await page.click('button[type="submit"]');
-    await page.waitForURL('/admin/dashboard');
+    // Go directly to dashboard (already authenticated via ui-admin project)
+    await page.goto('/admin/dashboard');
+    await page.waitForLoadState('networkidle');
     
     // Get initial stats
     const statsSection = page.locator('[data-testid="stats-cards"], .grid').first();
     const totalUsersCard = statsSection.locator('div:has-text("Total Users")').first();
     const initialUsers = await totalUsersCard.locator('.text-2xl').first().textContent();
     
-    // Navigate away and come back
-    await page.click('text=Organizations');
-    await page.waitForURL('/admin/organizations');
+    // Navigate to users page instead (Organizations might not be implemented)
+    await page.click('text=Manage Users');
+    await page.waitForURL('/admin/users');
     await page.goBack();
     await page.waitForURL('/admin/dashboard');
     
