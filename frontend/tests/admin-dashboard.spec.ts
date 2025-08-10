@@ -18,18 +18,18 @@ test.describe('Admin Dashboard', () => {
   });
 
   test('should display stats cards with data', async ({ page }) => {
-    // Check if all stats cards are visible - use more specific selectors
-    const statsSection = page.locator('[data-testid="stats-cards"], .grid').first();
-    await expect(statsSection.locator('text=Total Users')).toBeVisible();
-    await expect(statsSection.locator('text=Active Users')).toBeVisible();
-    await expect(statsSection.locator('text=Pending Approvals')).toBeVisible();
+    // Check if all stats cards are visible
+    await expect(page.locator('text=Total Users').first()).toBeVisible();
+    await expect(page.locator('text=Active Users').first()).toBeVisible();
+    await expect(page.locator('text=Pending Approvals').first()).toBeVisible();
     
     // For Organizations, be more specific since it appears multiple times
-    const orgCard = statsSection.locator('div:has-text("Organizations")').first();
+    const statsGrid = page.locator('.grid').first();
+    const orgCard = statsGrid.locator('text=Organizations').first();
     await expect(orgCard).toBeVisible();
 
     // Check that stats have numeric values (not just labels)
-    const totalUsersCard = statsSection.locator('div:has-text("Total Users")').first();
+    const totalUsersCard = page.locator(':has-text("Total Users")').first();
     const totalUsersValue = await totalUsersCard.locator('.text-2xl').first().textContent();
     expect(totalUsersValue).toMatch(/^\d+$/); // Should be a number
   });
@@ -99,9 +99,8 @@ test.describe('Admin Dashboard', () => {
   });
 
   test('should refresh stats when navigating back from users page', async ({ page }) => {
-    // Get initial user count - use more specific selector
-    const statsSection = page.locator('[data-testid="stats-cards"], .grid').first();
-    const totalUsersCard = statsSection.locator('div:has-text("Total Users")').first();
+    // Get initial user count
+    const totalUsersCard = page.locator(':has-text("Total Users")').first();
     const initialCount = await totalUsersCard.locator('.text-2xl').first().textContent();
     
     // Navigate to users page and back
@@ -111,7 +110,7 @@ test.describe('Admin Dashboard', () => {
     await page.waitForURL('/admin/dashboard');
     
     // Check that stats are still displayed (data persistence)
-    const newTotalUsersCard = statsSection.locator('div:has-text("Total Users")').first();
+    const newTotalUsersCard = page.locator(':has-text("Total Users")').first();
     const newCount = await newTotalUsersCard.locator('.text-2xl').first().textContent();
     expect(newCount).toBeTruthy();
   });
@@ -176,8 +175,7 @@ test.describe('Admin Dashboard - User Management Integration', () => {
 
   test('should show pending approvals count that matches dashboard', async ({ page }) => {
     // Get pending approvals count from dashboard
-    const statsSection = page.locator('[data-testid="stats-cards"], .grid').first();
-    const pendingCard = statsSection.locator('div:has-text("Pending Approvals")').first();
+    const pendingCard = page.locator(':has-text("Pending Approvals")').first();
     const pendingCount = await pendingCard.locator('.text-2xl').first().textContent();
     
     // Navigate to users page
@@ -200,8 +198,7 @@ test.describe('Admin Dashboard - Data Persistence', () => {
     await page.waitForLoadState('networkidle');
     
     // Get initial stats
-    const statsSection = page.locator('[data-testid="stats-cards"], .grid').first();
-    const totalUsersCard = statsSection.locator('div:has-text("Total Users")').first();
+    const totalUsersCard = page.locator(':has-text("Total Users")').first();
     const initialUsers = await totalUsersCard.locator('.text-2xl').first().textContent();
     
     // Navigate to users page instead (Organizations might not be implemented)
@@ -211,8 +208,7 @@ test.describe('Admin Dashboard - Data Persistence', () => {
     await page.waitForURL('/admin/dashboard');
     
     // Stats should be the same or updated (not empty)
-    const newStatsSection = page.locator('[data-testid="stats-cards"], .grid').first();
-    const newTotalUsersCard = newStatsSection.locator('div:has-text("Total Users")').first();
+    const newTotalUsersCard = page.locator(':has-text("Total Users")').first();
     const currentUsers = await newTotalUsersCard.locator('.text-2xl').first().textContent();
     expect(currentUsers).toBeTruthy();
     expect(parseInt(currentUsers || '0')).toBeGreaterThanOrEqual(0);
