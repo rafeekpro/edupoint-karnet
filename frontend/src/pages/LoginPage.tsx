@@ -35,11 +35,21 @@ const LoginPage: React.FC = () => {
           case 'admin':
             navigate('/admin/dashboard');
             break;
-          case 'therapist':
-            navigate('/therapist/dashboard');
+          case 'owner':
+            navigate('/owner/dashboard');
+            break;
+          case 'employee':
+            navigate('/employee/dashboard');
             break;
           case 'client':
             navigate('/client/dashboard');
+            break;
+          // Legacy support for old role names
+          case 'therapist':
+            navigate('/employee/dashboard');
+            break;
+          case 'organization_owner':
+            navigate('/owner/dashboard');
             break;
           default:
             navigate('/');

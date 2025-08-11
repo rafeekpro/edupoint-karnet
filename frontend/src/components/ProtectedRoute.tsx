@@ -7,7 +7,7 @@ import { AlertCircle } from 'lucide-react';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  role?: 'admin' | 'therapist' | 'client';
+  role?: 'admin' | 'owner' | 'employee' | 'client' | 'therapist' | 'organization_owner';
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, role }) => {
@@ -27,7 +27,36 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, role }) => {
     return <Navigate to={`/login?redirect=${location.pathname}`} replace />;
   }
 
-  if (role && user.role !== role) {
+  // Map legacy roles to new roles for backward compatibility
+  const normalizeRole = (userRole: string): string => {
+    const roleMap: { [key: string]: string } = {
+      'therapist': 'employee',
+      'organization_owner': 'owner'
+    };
+    return roleMap[userRole] || userRole;
+  };
+
+  // Check if user has the required role
+  const userRole = normalizeRole(user?.role || '');
+  const requiredRole = role ? normalizeRole(role) : null;
+
+  if (requiredRole && userRole !== requiredRole) {
+    // Get the correct dashboard for redirect
+    const getDashboardPath = (role: string): string => {
+      switch (role) {
+        case 'admin': return '/admin/dashboard';
+        case 'owner': return '/owner/dashboard';
+        case 'employee': return '/employee/dashboard';
+        case 'client': return '/client/dashboard';
+        default: return '/';
+      }
+    };
+
+    // Auto-redirect after showing message
+    setTimeout(() => {
+      window.location.href = getDashboardPath(userRole);
+    }, 2000);
+    
     return (
       <div className="flex justify-center items-center min-h-screen p-4">
         <Alert variant="destructive" className="max-w-md">

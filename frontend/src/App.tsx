@@ -7,6 +7,8 @@ import Layout from './components/Layout';
 // Pages
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
+
+// Admin Pages
 import AdminDashboard from './pages/admin/Dashboard';
 import AdminVouchers from './pages/admin/Vouchers';
 import AdminVoucherNew from './pages/admin/VoucherNew';
@@ -15,11 +17,23 @@ import AdminClasses from './pages/admin/Classes';
 import AdminOrganizations from './pages/admin/OrganizationsPage';
 import AdminVoucherTypes from './pages/admin/VoucherTypesPage';
 import AdminSettings from './pages/admin/SettingsPage';
+
+// Owner Pages
+import OwnerDashboard from './pages/owner/Dashboard';
+import OwnerEmployees from './pages/owner/Employees';
+
+// Employee Pages (formerly Therapist)
+import EmployeeDashboard from './pages/employee/Dashboard';
+import EmployeeClients from './pages/employee/Clients';
+
+// Client Pages
 import ClientDashboard from './pages/client/Dashboard';
 import ClientActivateCode from './pages/client/ActivateCode';
 import ClientSelectClass from './pages/client/SelectClass';
 import ClientCalendar from './pages/client/Calendar';
 import ClientVouchers from './pages/client/Vouchers';
+
+// Legacy Therapist Pages (will redirect to Employee)
 import TherapistDashboard from './pages/therapist/Dashboard';
 import TherapistSessions from './pages/therapist/Sessions';
 import TherapistCalendar from './pages/therapist/Calendar';
@@ -96,6 +110,58 @@ function App() {
                 element={
                   <ProtectedRoute role="admin">
                     <AdminSettings />
+                  </ProtectedRoute>
+                }
+              />
+              
+              {/* Owner routes */}
+              <Route
+                path="owner/dashboard"
+                element={
+                  <ProtectedRoute role="owner">
+                    <OwnerDashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="owner/employees"
+                element={
+                  <ProtectedRoute role="owner">
+                    <OwnerEmployees />
+                  </ProtectedRoute>
+                }
+              />
+              
+              {/* Employee routes */}
+              <Route
+                path="employee/dashboard"
+                element={
+                  <ProtectedRoute role="employee">
+                    <EmployeeDashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="employee/clients"
+                element={
+                  <ProtectedRoute role="employee">
+                    <EmployeeClients />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="employee/sessions"
+                element={
+                  <ProtectedRoute role="employee">
+                    <TherapistSessions />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="employee/calendar"
+                element={
+                  <ProtectedRoute role="employee">
+                    <TherapistCalendar />
                   </ProtectedRoute>
                 }
               />

@@ -85,7 +85,7 @@ const Dashboard: React.FC = () => {
 
   const quickActions = [
     {
-      title: 'Manage Users',
+      title: 'User Management',
       description: 'Add, edit, or remove users',
       icon: Users,
       onClick: () => navigate('/admin/users'),
@@ -163,8 +163,8 @@ const Dashboard: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Welcome Header */}
-      <div className="bg-gradient-to-r from-primary to-primary-foreground p-6 rounded-lg text-white">
-        <h1 className="text-3xl font-bold mb-2">Welcome back, {user?.name}!</h1>
+      <div className="bg-gradient-to-r from-primary to-primary-foreground p-6 rounded-lg text-white" data-testid="admin-welcome-header">
+        <h1 className="text-3xl font-bold mb-2" data-testid="welcome-message">Welcome back, {user?.name}!</h1>
         <p className="text-white/90">
           Here's an overview of your system. You have full administrative access.
         </p>
@@ -175,15 +175,15 @@ const Dashboard: React.FC = () => {
         {statsCards.map((stat, index) => {
           const Icon = stat.icon;
           return (
-            <Card key={index}>
+            <Card key={index} data-testid={`stat-card-${stat.title.toLowerCase().replace(/\s+/g, '-')}`}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
+                <CardTitle className="text-sm font-medium" data-testid={`stat-title-${stat.title.toLowerCase().replace(/\s+/g, '-')}`}>
                   {stat.title}
                 </CardTitle>
                 <Icon className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stat.value}</div>
+                <div className="text-2xl font-bold" data-testid={`stat-value-${stat.title.toLowerCase().replace(/\s+/g, '-')}`}>{stat.value}</div>
                 <p className={`text-xs ${
                   stat.changeType === 'positive' ? 'text-green-600' :
                   stat.changeType === 'warning' ? 'text-orange-600' :
@@ -199,7 +199,15 @@ const Dashboard: React.FC = () => {
 
       {/* Quick Actions */}
       <div>
-        <h2 className="text-2xl font-bold mb-4">Quick Actions</h2>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-2xl font-bold">Quick Actions</h2>
+          <Button 
+            data-testid="create-organization-button"
+            onClick={() => navigate('/admin/organizations')}
+          >
+            Create Organization
+          </Button>
+        </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {quickActions.map((action, index) => {
             const Icon = action.icon;
@@ -208,6 +216,7 @@ const Dashboard: React.FC = () => {
                 key={index} 
                 className="hover:shadow-lg transition-shadow cursor-pointer"
                 onClick={action.onClick}
+                data-testid={`quick-action-${action.title.toLowerCase().replace(/\s+/g, '-')}`}
               >
                 <CardHeader>
                   <div className={`${action.bgColor} ${action.color} w-12 h-12 rounded-lg flex items-center justify-center mb-2`}>

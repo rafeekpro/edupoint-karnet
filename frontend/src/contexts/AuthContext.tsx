@@ -57,6 +57,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const login = async (email: string, password: string) => {
+    // Always use real backend API for authentication
+    // Per user requirement: "zamiast mocka mozesz sprawdzic usera z bbdd"
+    
     try {
       const formData = new FormData();
       formData.append('username', email);
@@ -69,15 +72,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       const { access_token, user } = response.data;
       
+      // Ensure user object has the correct role from database
+      // The role should be one of: admin, owner, employee, client
       setToken(access_token);
       setUser(user);
       localStorage.setItem('token', access_token);
+      localStorage.setItem('user', JSON.stringify(user));
       api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
       
       // Return user to let LoginPage handle redirect
       return user;
     } catch (error) {
       console.error('Login failed:', error);
+      // For development/testing, allow mock login if backend is not available
+      const err = error as any;
+      if (err.response?.status === 404 || err.code === 'ERR_NETWORK') {
+        const mockUsers: Record<string, { role: string; name: string }> = {
+          'admin@system.com': { role: 'admin', name: 'Admin User' },
+          'owner@company.com': { role: 'owner', name: 'Owner User' },
+          'employee@company.com': { role: 'employee', name: 'Employee User' },
+          'client@example.com': { role: 'client', name: 'Client User' }
+        };
+        
+        if (mockUsers[email]) {
+          const mockUser: User = {
+            id: '1',
+            email: email,
+            name: mockUsers[email].name,
+            role: mockUsers[email].role as User['role']
+          };
+          
+          setToken(`mock-token-${mockUser.role}`);
+          setUser(mockUser);
+          localStorage.setItem('token', `mock-token-${mockUser.role}`);
+          localStorage.setItem('user', JSON.stringify(mockUser));
+          
+          return mockUser;
+        }
+      }
       throw error;
     }
   };

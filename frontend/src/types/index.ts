@@ -2,7 +2,8 @@ export interface User {
   id: string;
   email: string;
   name: string;
-  role: 'client' | 'therapist' | 'admin';
+  role: 'admin' | 'owner' | 'employee' | 'client' | 'therapist' | 'organization_owner';
+  organization_id?: number;
   created_at?: string;
 }
 

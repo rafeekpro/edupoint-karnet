@@ -1,0 +1,24 @@
+{
+  "admin": {
+    "email": "admin@example.com",
+    "password": "admin123",
+    "name": "Admin User",
+    "role": "admin"
+  },
+  "therapist": {
+    "email": "therapist@example.com",
+    "password": "therapist123",
+    "name": "Therapist User",
+    "role": "therapist"
+  },
+  "client": {
+    "email": "client@example.com",
+    "password": "client123",
+    "name": "Client User",
+    "role": "client"
+  },
+  "invalid": {
+    "email": "invalid@example.com",
+    "password": "wrongpassword"
+  }
+}

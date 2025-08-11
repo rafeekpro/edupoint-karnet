@@ -86,6 +86,7 @@ const UsersPage: React.FC = () => {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   
   // Form data
@@ -158,15 +159,22 @@ const UsersPage: React.FC = () => {
     }
   };
 
-  const handleDeleteUser = async (userId: number) => {
-    if (!window.confirm('Are you sure you want to delete this user?')) return;
+  const handleDeleteUser = async () => {
+    if (!selectedUser) return;
     
     try {
-      await api.delete(`/api/admin/users/${userId}`);
+      await api.delete(`/api/admin/users/${selectedUser.id}`);
+      setDeleteDialogOpen(false);
+      setSelectedUser(null);
       fetchUsers();
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to delete user');
     }
+  };
+
+  const openDeleteDialog = (user: User) => {
+    setSelectedUser(user);
+    setDeleteDialogOpen(true);
   };
 
   const handleApproveUser = async (userId: number) => {
@@ -260,7 +268,7 @@ const UsersPage: React.FC = () => {
             </div>
             <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
               <DialogTrigger asChild>
-                <Button>
+                <Button data-testid="add-user-button">
                   <Plus className="mr-2 h-4 w-4" />
                   Add User
                 </Button>
@@ -468,7 +476,7 @@ const UsersPage: React.FC = () => {
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => handleDeleteUser(user.id)}
+                            onClick={() => openDeleteDialog(user)}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -584,6 +592,24 @@ const UsersPage: React.FC = () => {
               Cancel
             </Button>
             <Button onClick={handleChangePassword}>Change Password</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete User Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete User</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete {selectedUser?.name} ({selectedUser?.email})? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteUser}>Delete</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

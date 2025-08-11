@@ -1,0 +1,41 @@
+{
+  "voucherTypes": [
+    {
+      "name": "Basic Package",
+      "sessions": 5,
+      "price": 500,
+      "organization": "Test Organization",
+      "description": "Basic therapy package with 5 sessions"
+    },
+    {
+      "name": "Premium Package",
+      "sessions": 10,
+      "price": 900,
+      "organization": "Test Organization",
+      "description": "Premium therapy package with 10 sessions"
+    },
+    {
+      "name": "Ultimate Package",
+      "sessions": 20,
+      "price": 1600,
+      "organization": "Test Organization",
+      "description": "Ultimate therapy package with 20 sessions"
+    }
+  ],
+  "activeVouchers": [
+    {
+      "type": "Basic Package",
+      "sessionsUsed": 2,
+      "sessionsTotal": 5,
+      "expiryDate": "2024-12-31",
+      "therapist": "Dr. Smith"
+    },
+    {
+      "type": "Premium Package",
+      "sessionsUsed": 0,
+      "sessionsTotal": 10,
+      "expiryDate": "2024-11-30",
+      "therapist": "Dr. Johnson"
+    }
+  ]
+}

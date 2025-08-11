@@ -1,0 +1,70 @@
+
+DevTools listening on ws://127.0.0.1:61452/devtools/browser/1cd9ed3b-a395-4259-b52c-e701d51b3f10
+Missing baseUrl in compilerOptions. tsconfig-paths will be skipped
+
+Opening `/dev/tty` failed (6): Device not configured
+================================================================================
+
+  (Run Starting)
+
+  ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ Cypress:        14.5.4                                                                         │
+  │ Browser:        Electron 130 (headless)                                                        │
+  │ Node Version:   v22.14.0 (/Users/rafal.lagowski/.nvm/versions/node/v22.14.0/bin/node)          │
+  │ Specs:          22 found (admin-add-user-simple.feature, admin-dashboard.feature, admin-edit-d │
+  │                 elete-user-ui.feature, admin-edit-delete-user.feature, admin-login-bug-detecti │
+  │                 on.feature, admin-user-management.feature, admin-users-simple.feature, client- │
+  │                 dashboard.feature, clie...)                                                    │
+  │ Searched:       cypress/e2e/**/*.feature                                                       │
+  └────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+                                                                                                    
+  Running:  admin-add-user-simple.feature                                                  (1 of 22)
+[2J[1;3H
+  0 passing (11s)
+  1 failing
+
+  1) Admin Add User Simple
+       Add new client user:
+     AssertionError: Timed out retrying after 10000ms: Expected to find element: `[data-testid="add-user-button"]`, but never found it.
+      at Context.eval (http://localhost:3000/__cypress/tests?p=cypress/e2e/features/admin-add-user-simple.feature:16288:12)
+      at Registry.runStepDefinition (http://localhost:3000/__cypress/tests?p=cypress/e2e/features/admin-add-user-simple.feature:10415:48)
+      at Object.fn (http://localhost:3000/__cypress/tests?p=cypress/e2e/features/admin-add-user-simple.feature:13369:43)
+      at runStepWithLogGroup (http://localhost:3000/__cypress/tests?p=cypress/e2e/features/admin-add-user-simple.feature:12856:29)
+      at Context.eval (http://localhost:3000/__cypress/tests?p=cypress/e2e/features/admin-add-user-simple.feature:13365:62)
+      at getRet (http://localhost:3000/__cypress/runner/cypress_runner.js:121066:20)
+      at tryCatcher (http://localhost:3000/__cypress/runner/cypress_runner.js:1777:23)
+      at Promise.attempt.Promise.try (http://localhost:3000/__cypress/runner/cypress_runner.js:4285:29)
+      at Context.thenFn (http://localhost:3000/__cypress/runner/cypress_runner.js:121077:66)
+
+
+
+
+  (Results)
+
+  ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ Tests:        1                                                                                │
+  │ Passing:      0                                                                                │
+  │ Failing:      1                                                                                │
+  │ Pending:      0                                                                                │
+  │ Skipped:      0                                                                                │
+  │ Screenshots:  1                                                                                │
+  │ Video:        false                                                                            │
+  │ Duration:     10 seconds                                                                       │
+  │ Spec Ran:     admin-add-user-simple.feature                                                    │
+  └────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+
+  (Screenshots)
+
+  -  /Users/rafal.lagowski/ProjectsRL/edupoint-karnet/frontend/cypress/screenshots/ad    (2560x1440)
+     min-add-user-simple.feature/Admin Add User Simple -- Add new client user (failed               
+     ).png                                                                                          
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+                                                                                                    
+  Running:  admin-dashboard.feature                                                        (2 of 22)
+[2J[1;3H
