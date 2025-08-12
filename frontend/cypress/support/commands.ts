@@ -1,20 +1,52 @@
 /// <reference types="cypress" />
 
-// Custom commands for authentication
+// Login with session caching - logs in once and reuses session
+Cypress.Commands.add('loginWithSession', (email: string = 'admin@system.com', password: string = 'admin123') => {
+  cy.session(
+    [email, password], // Session ID based on credentials
+    () => {
+      // This runs only once per unique session ID
+      cy.visit('/login');
+      cy.get('#email').clear().type(email);
+      cy.get('#password').clear().type(password);
+      cy.get('button[type="submit"]').click();
+      
+      // Wait for successful login
+      cy.url({ timeout: 15000 }).should('include', '/dashboard');
+      
+      // Verify we're logged in
+      cy.window().then((win) => {
+        const token = win.localStorage.getItem('token');
+        expect(token).to.exist;
+      });
+    },
+    {
+      validate() {
+        // Check if session is still valid
+        cy.window().then((win) => {
+          const token = win.localStorage.getItem('token');
+          const user = win.localStorage.getItem('user');
+          expect(token).to.exist;
+          expect(user).to.exist;
+        });
+      },
+      cacheAcrossSpecs: true // Share session across different test files
+    }
+  );
+});
+
+// Custom commands for authentication (old version for compatibility)
 Cypress.Commands.add('loginAs', (role: 'admin' | 'therapist' | 'client') => {
   const credentials = {
-    admin: { email: 'admin@example.com', password: 'admin123' },
+    admin: { email: 'admin@system.com', password: 'admin123' },
     therapist: { email: 'therapist@example.com', password: 'therapist123' },
     client: { email: 'client@example.com', password: 'client123' }
   };
 
   const { email, password } = credentials[role];
   
-  cy.visit('/login');
-  cy.get('input[type="email"]').type(email);
-  cy.get('input[type="password"]').type(password);
-  cy.get('button[type="submit"]').click();
-  cy.url().should('include', `/${role}/dashboard`);
+  // Use session-based login
+  cy.loginWithSession(email, password);
 });
 
 Cypress.Commands.add('logout', () => {
@@ -66,6 +98,7 @@ Cypress.Commands.add('selectDropdown', (dropdownName: string, optionText: string
 declare global {
   namespace Cypress {
     interface Chainable {
+      loginWithSession(email?: string, password?: string): Chainable<void>;
       loginAs(role: 'admin' | 'therapist' | 'client'): Chainable<void>;
       logout(): Chainable<void>;
       apiRequest(method: string, url: string, body?: any): Chainable<Cypress.Response<any>>;

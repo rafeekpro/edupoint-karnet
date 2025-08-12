@@ -1,7 +1,11 @@
 describe('Admin Dashboard', () => {
   beforeEach(() => {
-    // Clear localStorage and login as admin
+    // Clear all storage and cookies
     cy.clearLocalStorage();
+    cy.clearCookies();
+    cy.window().then((win) => {
+      win.sessionStorage.clear();
+    });
     
     // Visit login page
     cy.visit('/login');

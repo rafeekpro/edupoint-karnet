@@ -1,5 +1,12 @@
 describe('Admin Tests', () => {
   beforeEach(() => {
+    // Clear all storage and cookies
+    cy.clearLocalStorage();
+    cy.clearCookies();
+    cy.window().then((win) => {
+      win.sessionStorage.clear();
+    });
+    
     // Login as admin
     cy.visit('/login');
     cy.get('input[type="email"]').type('admin@system.com');

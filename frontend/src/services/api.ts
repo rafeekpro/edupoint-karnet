@@ -7,11 +7,20 @@ const api = axios.create({
   },
 });
 
-// Add token to requests if it exists
-const token = localStorage.getItem('token');
-if (token) {
-  api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-}
+// Request interceptor to add token dynamically
+api.interceptors.request.use(
+  (config) => {
+    // Get token from localStorage for each request
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers['Authorization'] = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
 
 // Response interceptor for error handling
 api.interceptors.response.use(
