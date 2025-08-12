@@ -22,8 +22,8 @@ spec:
         ports:
         - containerPort: 8000
         env:
-        - name: DATABASE_URL
-          value: "postgresql://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)"
+        # Don't use DATABASE_URL to avoid password encoding issues
+        # Backend will build it from individual components
         - name: DB_HOST
           valueFrom:
             configMapKeyRef:
