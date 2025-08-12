@@ -5,6 +5,7 @@ import json
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta, date
 from decimal import Decimal
+from urllib.parse import quote_plus
 
 class DateTimeEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -21,10 +22,19 @@ from models_v2 import (
     Organization, VoucherType, UserResponse
 )
 
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql://therapy_user:therapy_password@postgres:5432/therapy_system"
-)
+# Try to use individual env vars first, fall back to DATABASE_URL
+DB_HOST = os.getenv("DB_HOST", "postgres")
+DB_PORT = os.getenv("DB_PORT", "5432")
+DB_NAME = os.getenv("DB_NAME", "therapy_system")
+DB_USER = os.getenv("DB_USER", "therapy_user")
+DB_PASSWORD = os.getenv("DB_PASSWORD", "therapy_password")
+
+# Build DATABASE_URL from components if not provided directly
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    # URL-encode password to handle special characters
+    encoded_password = quote_plus(DB_PASSWORD)
+    DATABASE_URL = f"postgresql://{DB_USER}:{encoded_password}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
 class DatabaseV2:
     def __init__(self):
@@ -35,10 +45,22 @@ class DatabaseV2:
     
     def connect(self):
         try:
-            self.connection = psycopg2.connect(DATABASE_URL)
-            print(f"Connected to database successfully")
+            # Alternative connection method using individual parameters
+            if all([DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD]) and not os.getenv("DATABASE_URL"):
+                self.connection = psycopg2.connect(
+                    host=DB_HOST,
+                    port=DB_PORT,
+                    database=DB_NAME,
+                    user=DB_USER,
+                    password=DB_PASSWORD
+                )
+                print(f"Connected to database successfully using individual parameters")
+            else:
+                self.connection = psycopg2.connect(DATABASE_URL)
+                print(f"Connected to database successfully using DATABASE_URL")
         except Exception as e:
             print(f"Failed to connect to database: {e}")
+            print(f"DB_HOST: {DB_HOST}, DB_PORT: {DB_PORT}, DB_NAME: {DB_NAME}, DB_USER: {DB_USER}")
             raise
     
     def get_connection(self):
