@@ -372,16 +372,6 @@ jobs:
         delete-only-untagged-versions: false
         token: ${{ secrets.GITHUB_TOKEN }}
     
-    - name: Cleanup old e2e-tests images
-      uses: actions/delete-package-versions@v4
-      with:
-        package-name: 'edupoint-karnet/e2e-tests'
-        package-type: 'container'
-        min-versions-to-keep: 5
-        delete-only-pre-release-versions: false
-        delete-only-untagged-versions: false
-        token: ${{ secrets.GITHUB_TOKEN }}
-    
     - name: Summary
       run: |
         echo "### Cleanup Complete" >> $GITHUB_STEP_SUMMARY
