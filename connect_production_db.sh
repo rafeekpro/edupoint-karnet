@@ -11,7 +11,7 @@ echo "Database: voucherskit"
 echo "User: voucherskit"
 echo ""
 
-export PGPASSWORD='1hE#*%lK*!OT'
+export PGPASSWORD='VouchersKit2024Prod'
 
 if [ "$1" == "stats" ]; then
     echo "Statystyki bazy danych:"

@@ -3,7 +3,7 @@ services:
   # Database host: postgres.local.pro4.es
   # Database name: voucherskit
   # Database user: voucherskit
-  # Database password: 1hE#*%lK*!OT
+  # Database password: VouchersKit2024Prod
 
   backend:
     build:
@@ -11,14 +11,14 @@ services:
       dockerfile: Dockerfile
     container_name: voucherskit-backend
     environment:
-      DATABASE_URL: postgresql://voucherskit:1hE%23*%25lK*%21OT@postgres.local.pro4.es:5432/voucherskit
+      DATABASE_URL: postgresql://voucherskit:VouchersKit2024Prod@postgres.local.pro4.es:5432/voucherskit
       JWT_SECRET_KEY: your-secret-key-here-change-in-production
       ENVIRONMENT: production
       DB_HOST: postgres.local.pro4.es
       DB_PORT: 5432
       DB_NAME: voucherskit
       DB_USER: voucherskit
-      DB_PASSWORD: "1hE#*%lK*!OT"
+      DB_PASSWORD: VouchersKit2024Prod
     ports:
       - "8000:8000"
     volumes:
