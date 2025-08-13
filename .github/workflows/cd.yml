@@ -379,45 +379,15 @@ jobs:
         echo "Old Docker images have been cleaned up. Keeping last 5 versions of each package." >> $GITHUB_STEP_SUMMARY
 
   run-e2e-tests:
-    name: Run E2E Tests
+    name: Run E2E Tests (Skipped - Production)
     runs-on: ubuntu-latest
     needs: setup-vpn-and-deploy
-    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.run-e2e-tests) || github.event_name == 'workflow_run' }}
+    if: ${{ false }}  # Temporarily disabled - E2E tests should not run against production
     
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-    
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '22.14.0'
-        cache: 'npm'
-        cache-dependency-path: frontend/package-lock.json
-    
-    - name: Install dependencies
-      working-directory: ./frontend
-      run: npm ci
-    
-    - name: Run Cypress E2E tests
-      working-directory: ./frontend
-      run: npm run cypress:run
-      env:
-        CI: true
-        CYPRESS_BASE_URL: https://voucherskit.com
-    
-    - name: Upload test results - Screenshots
-      uses: actions/upload-artifact@v4
-      if: failure()
-      with:
-        name: cypress-screenshots
-        path: frontend/cypress/screenshots
-        retention-days: 7
-    
-    - name: Upload test results - Videos
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: cypress-videos
-        path: frontend/cypress/videos
-        retention-days: 7
+    - name: Skip E2E Tests
+      run: |
+        echo "### E2E Tests Skipped" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "E2E tests are disabled for production deployments." >> $GITHUB_STEP_SUMMARY
+        echo "Tests should run against staging/test environment, not production." >> $GITHUB_STEP_SUMMARY
