@@ -251,6 +251,10 @@ jobs:
         echo "Applying Kubernetes manifests..."
         kustomize build . | kubectl apply -f -
         
+        # Force rollout restart to ensure new image is pulled
+        echo "Forcing rollout restart..."
+        kubectl rollout restart deployment/voucherskit-backend -n ${{ env.NAMESPACE }}
+        
         # Wait for rollout with debug info
         echo "Waiting for deployment rollout..."
         kubectl rollout status deployment/voucherskit-backend -n ${{ env.NAMESPACE }} --timeout=300s || {
@@ -295,6 +299,10 @@ jobs:
         # Build and apply
         echo "Applying Kubernetes manifests..."
         kustomize build . | kubectl apply -f -
+        
+        # Force rollout restart to ensure new image is pulled
+        echo "Forcing rollout restart..."
+        kubectl rollout restart deployment/voucherskit-frontend -n ${{ env.NAMESPACE }}
         
         # Wait for rollout with debug info
         echo "Waiting for deployment rollout..."
