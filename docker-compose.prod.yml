@@ -1,0 +1,49 @@
+services:
+  # Konfiguracja dla nowej bazy produkcyjnej voucherskit
+  # Database host: postgres.local.pro4.es
+  # Database name: voucherskit
+  # Database user: voucherskit
+  # Database password: 1hE#*%lK*!OT
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: voucherskit-backend
+    environment:
+      DATABASE_URL: postgresql://voucherskit:1hE%23*%25lK*%21OT@postgres.local.pro4.es:5432/voucherskit
+      JWT_SECRET_KEY: your-secret-key-here-change-in-production
+      ENVIRONMENT: production
+      DB_HOST: postgres.local.pro4.es
+      DB_PORT: 5432
+      DB_NAME: voucherskit
+      DB_USER: voucherskit
+      DB_PASSWORD: "1hE#*%lK*!OT"
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - voucherskit-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: voucherskit-frontend
+    environment:
+      REACT_APP_API_URL: http://localhost:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - voucherskit-network
+
+networks:
+  voucherskit-network:
+    driver: bridge
