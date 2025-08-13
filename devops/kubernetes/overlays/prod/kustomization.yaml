@@ -15,6 +15,7 @@ configMapGenerator:
     literals:
       - ENVIRONMENT=production
       - DB_NAME=therapy_system_prod
+      - DB_HOST=postgresql.postgresql.svc.cluster.local
 
 # Secret is created by GitHub Actions workflow
 # secretGenerator removed to avoid conflicts

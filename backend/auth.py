@@ -6,6 +6,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from models import User
 from db_connection import db
+import os
 try:
     from models_v2 import UserResponse
     from db_v2 import db_v2
@@ -13,7 +14,8 @@ try:
 except ImportError:
     use_v2 = False
 
-SECRET_KEY = "your-secret-key-here-change-in-production"
+# Get SECRET_KEY from environment variable with fallback for local development
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-here-change-in-production")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
