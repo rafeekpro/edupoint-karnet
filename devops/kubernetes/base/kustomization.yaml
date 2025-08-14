@@ -19,7 +19,8 @@ configMapGenerator:
       - ENVIRONMENT=production
       - DB_HOST=postgres.local.pro4.es
       - DB_PORT=5432
-      - DB_NAME=therapy_system
+      - DB_NAME=voucherskit
+      - DB_USER=voucherskit
 
 # Secrets are created by GitHub Actions workflow
 # secretGenerator removed to avoid conflicts

@@ -18,7 +18,7 @@ spec:
       - name: ghcr-secret
       containers:
       - name: frontend
-        image: ghcr.io/rafeekpro/voucherskit-frontend-prod
+        image: ghcr.io/rafeekpro/edupoint-karnet/frontend:main
         ports:
         - containerPort: 3000
         env:

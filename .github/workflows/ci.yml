@@ -93,10 +93,10 @@ jobs:
         cache-from: type=gha
         cache-to: type=gha,mode=max
         build-args: |
-          DB_HOST=${{ secrets.DB_HOST_PROD }}
-          DB_PORT=${{ secrets.DB_PORT_PROD }}
-          DB_NAME=therapy_system_prod
-          DB_USER=${{ secrets.DB_USER_PROD }}
+          DB_HOST=postgres.local.pro4.es
+          DB_PORT=5432
+          DB_NAME=voucherskit
+          DB_USER=voucherskit
           DB_PASSWORD=${{ secrets.DB_PASSWORD_PROD }}
           JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY_PROD }}
           ENVIRONMENT=production

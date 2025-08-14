@@ -14,18 +14,17 @@ configMapGenerator:
     behavior: merge
     literals:
       - ENVIRONMENT=production
-      - DB_NAME=therapy_system_prod
-      - DB_HOST=postgresql.postgresql.svc.cluster.local
+      - DB_NAME=voucherskit
+      - DB_HOST=postgres.local.pro4.es
+      - DB_USER=voucherskit
 
 # Secret is created by GitHub Actions workflow
 # secretGenerator removed to avoid conflicts
 
 images:
-  - name: ghcr.io/rafeekpro/voucherskit-backend-prod
-    newName: ghcr.io/rafeekpro/edupoint-karnet/backend
+  - name: ghcr.io/rafeekpro/edupoint-karnet/backend
     newTag: $(IMAGE_TAG)
-  - name: ghcr.io/rafeekpro/voucherskit-frontend-prod
-    newName: ghcr.io/rafeekpro/edupoint-karnet/frontend
+  - name: ghcr.io/rafeekpro/edupoint-karnet/frontend
     newTag: $(IMAGE_TAG)
 
 # Replacements removed - handled directly in deployment patches
