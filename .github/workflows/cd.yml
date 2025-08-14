@@ -69,11 +69,11 @@ jobs:
         if [ "${{ github.event_name }}" == "workflow_run" ]; then
           echo "CI Workflow: ${{ github.event.workflow_run.name }}"
           echo "CI Status: ${{ github.event.workflow_run.conclusion }}"
-          echo "CI Run ID: ${{ github.event.workflow_run.id }}"
-          # Get the tag from the CI workflow run (use short SHA)
+          echo "CI Run Number: ${{ github.event.workflow_run.run_number }}"
+          # Get the tag from the CI workflow run (use run number and short SHA)
           SHORT_SHA=$(echo "${{ github.event.workflow_run.head_sha }}" | cut -c1-7)
-          echo "IMAGE_TAG=${{ github.event.workflow_run.id }}-${SHORT_SHA}" >> $GITHUB_OUTPUT
-          echo "Using CI workflow tag: ${{ github.event.workflow_run.id }}-${SHORT_SHA}"
+          echo "IMAGE_TAG=run-${{ github.event.workflow_run.run_number }}-${SHORT_SHA}" >> $GITHUB_OUTPUT
+          echo "Using CI workflow tag: run-${{ github.event.workflow_run.run_number }}-${SHORT_SHA}"
         elif [ -n "${{ inputs.image-tag }}" ]; then
           # Use the provided tag
           echo "IMAGE_TAG=${{ inputs.image-tag }}" >> $GITHUB_OUTPUT
