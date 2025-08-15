@@ -245,7 +245,7 @@ jobs:
         
         # Update image tag (backend)
         kustomize edit set image \
-          ghcr.io/rafeekpro/voucherskit-backend-prod=ghcr.io/${{ env.IMAGE_NAME }}/backend:${{ steps.determine-tag.outputs.IMAGE_TAG }}
+          ghcr.io/rafeekpro/edupoint-karnet/backend=ghcr.io/${{ env.IMAGE_NAME }}/backend:${{ steps.determine-tag.outputs.IMAGE_TAG }}
         
         # Build and apply
         echo "Applying Kubernetes manifests..."
@@ -294,7 +294,7 @@ jobs:
         
         # Update image tag (frontend)  
         kustomize edit set image \
-          ghcr.io/rafeekpro/voucherskit-frontend-prod=ghcr.io/${{ env.IMAGE_NAME }}/frontend:${{ steps.determine-tag.outputs.IMAGE_TAG }}
+          ghcr.io/rafeekpro/edupoint-karnet/frontend=ghcr.io/${{ env.IMAGE_NAME }}/frontend:${{ steps.determine-tag.outputs.IMAGE_TAG }}
         
         # Build and apply
         echo "Applying Kubernetes manifests..."
