@@ -1,0 +1,80 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Base resources that will be used across all environments
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - backend-deployment.yaml
+  - backend-service.yaml
+  - frontend-deployment.yaml
+  - frontend-service.yaml
+  - ingress.yaml
+  # Optional resources
+  # - database.yaml
+  # - redis.yaml
+  # - cronjob.yaml
+  # - horizontal-pod-autoscaler.yaml
+
+# Common labels applied to all resources
+commonLabels:
+  app.kubernetes.io/managed-by: kustomize
+  app.kubernetes.io/part-of: myapp
+
+# Common annotations
+commonAnnotations:
+  version: "1.0.0"
+
+# Config map generator for application configuration
+configMapGenerator:
+  - name: app-config
+    literals:
+      - LOG_LEVEL=info
+      - NODE_ENV=production
+      - TZ=UTC
+
+# Secret generator (base secrets, will be overridden in overlays)
+secretGenerator:
+  - name: app-secrets
+    type: Opaque
+    literals:
+      - DATABASE_URL=postgresql://user:pass@localhost/db
+      - REDIS_URL=redis://localhost:6379
+
+# Default images (will be overridden by CI/CD)
+images:
+  - name: backend
+    newName: ghcr.io/myorg/myapp/backend
+    newTag: latest
+  - name: frontend
+    newName: ghcr.io/myorg/myapp/frontend
+    newTag: latest
+
+# Resource limits and requests patches
+patches:
+  - target:
+      kind: Deployment
+      name: backend
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+  - target:
+      kind: Deployment
+      name: frontend
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"

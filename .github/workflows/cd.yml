@@ -228,7 +228,7 @@ jobs:
         echo "Deploying backend with tag: ${{ steps.determine-tag.outputs.IMAGE_TAG }}"
         
         # Build the image URL
-        IMAGE_URL="ghcr.io/${{ env.IMAGE_NAME }}/backend:${{ steps.determine-tag.outputs.IMAGE_TAG }}"
+        IMAGE_URL="ghcr.io/rafeekpro/edupoint-karnet/backend:${{ steps.determine-tag.outputs.IMAGE_TAG }}"
         echo "Image URL: $IMAGE_URL"
         
         # Try to verify image exists (may fail after VPN but continue anyway)
@@ -245,7 +245,7 @@ jobs:
         
         # Update image tag (backend)
         kustomize edit set image \
-          ghcr.io/rafeekpro/edupoint-karnet/backend=ghcr.io/${{ env.IMAGE_NAME }}/backend:${{ steps.determine-tag.outputs.IMAGE_TAG }}
+          ghcr.io/rafeekpro/edupoint-karnet/backend=ghcr.io/rafeekpro/edupoint-karnet/backend:${{ steps.determine-tag.outputs.IMAGE_TAG }}
         
         # Build and apply
         echo "Applying Kubernetes manifests..."
@@ -282,7 +282,7 @@ jobs:
         echo "Deploying frontend with tag: ${{ steps.determine-tag.outputs.IMAGE_TAG }}"
         
         # Build the image URL
-        IMAGE_URL="ghcr.io/${{ env.IMAGE_NAME }}/frontend:${{ steps.determine-tag.outputs.IMAGE_TAG }}"
+        IMAGE_URL="ghcr.io/rafeekpro/edupoint-karnet/frontend:${{ steps.determine-tag.outputs.IMAGE_TAG }}"
         echo "Image URL: $IMAGE_URL"
         
         # Try to verify image exists (may fail after VPN but continue anyway)
@@ -294,7 +294,7 @@ jobs:
         
         # Update image tag (frontend)  
         kustomize edit set image \
-          ghcr.io/rafeekpro/edupoint-karnet/frontend=ghcr.io/${{ env.IMAGE_NAME }}/frontend:${{ steps.determine-tag.outputs.IMAGE_TAG }}
+          ghcr.io/rafeekpro/edupoint-karnet/frontend=ghcr.io/rafeekpro/edupoint-karnet/frontend:${{ steps.determine-tag.outputs.IMAGE_TAG }}
         
         # Build and apply
         echo "Applying Kubernetes manifests..."

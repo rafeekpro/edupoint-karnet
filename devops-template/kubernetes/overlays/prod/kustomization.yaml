@@ -1,0 +1,147 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Reference to base configuration
+bases:
+  - ../../base
+
+# Namespace for production
+namespace: myapp-prod
+
+# Production-specific labels
+commonLabels:
+  environment: production
+  tier: production
+
+# Production-specific annotations
+commonAnnotations:
+  environment: production
+  managed-by: kustomize
+
+# Override namespace name
+patchesJson6902:
+  - target:
+      version: v1
+      kind: Namespace
+      name: myapp
+    patch: |-
+      - op: replace
+        path: /metadata/name
+        value: myapp-prod
+
+# Production replica count
+replicas:
+  - name: backend
+    count: 3
+  - name: frontend
+    count: 3
+
+# Production-specific config
+configMapGenerator:
+  - name: app-config
+    behavior: merge
+    literals:
+      - ENVIRONMENT=production
+      - LOG_LEVEL=warn
+      - ENABLE_DEBUG=false
+      - ENABLE_METRICS=true
+      - ENABLE_TRACING=true
+      - DATABASE_HOST=prod-db.example.com
+      - DATABASE_NAME=myapp_prod
+      - REDIS_HOST=prod-redis.example.com
+      - CORS_ORIGINS=https://app.example.com,https://www.example.com
+
+# Production secrets (managed externally)
+secretGenerator:
+  - name: app-secrets
+    behavior: replace
+    type: Opaque
+    literals:
+      - DATABASE_PASSWORD=prod-password-placeholder
+      - JWT_SECRET=prod-jwt-secret-placeholder
+      - API_KEY=prod-api-key-placeholder
+    # In production, use external secret management:
+    # envs:
+    #   - prod-secrets.env
+    # Or reference external secrets:
+    # options:
+    #   disableNameSuffixHash: true
+
+# Production patches
+patches:
+  # Resource limits for production
+  - target:
+      kind: Deployment
+      name: backend
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+  
+  - target:
+      kind: Deployment
+      name: frontend
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+  
+  # Update ingress for production domain
+  - target:
+      kind: Ingress
+      name: app-ingress
+    patch: |-
+      - op: replace
+        path: /spec/rules/0/host
+        value: app.example.com
+      - op: replace
+        path: /spec/rules/1/host
+        value: api.example.com
+      - op: replace
+        path: /spec/tls/0/hosts
+        value:
+          - app.example.com
+          - api.example.com
+  
+  # Add production-specific annotations to ingress
+  - target:
+      kind: Ingress
+      name: app-ingress
+    patch: |-
+      - op: add
+        path: /metadata/annotations/cert-manager.io~1cluster-issuer
+        value: letsencrypt-prod
+      - op: replace
+        path: /metadata/annotations/nginx.ingress.kubernetes.io~1limit-rps
+        value: "50"
+      - op: replace
+        path: /metadata/annotations/nginx.ingress.kubernetes.io~1limit-rpm
+        value: "1000"
+
+# Production-specific images (overridden by CI/CD)
+images:
+  - name: backend
+    newName: ghcr.io/myorg/myapp/backend
+    newTag: stable
+  - name: frontend
+    newName: ghcr.io/myorg/myapp/frontend
+    newTag: stable
+
+# Additional production resources
+resources:
+  - pod-disruption-budget.yaml
+  - network-policy.yaml
+  # - horizontal-pod-autoscaler.yaml
+  # - vertical-pod-autoscaler.yaml

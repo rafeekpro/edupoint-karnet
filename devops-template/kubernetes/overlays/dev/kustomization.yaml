@@ -1,0 +1,145 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Reference to base configuration
+bases:
+  - ../../base
+
+# Namespace for dev
+namespace: myapp-dev
+
+# Dev-specific labels
+commonLabels:
+  environment: development
+  tier: development
+
+# Dev-specific annotations
+commonAnnotations:
+  environment: development
+  managed-by: kustomize
+
+# Override namespace name
+patchesJson6902:
+  - target:
+      version: v1
+      kind: Namespace
+      name: myapp
+    patch: |-
+      - op: replace
+        path: /metadata/name
+        value: myapp-dev
+
+# Dev replica count (minimal for cost saving)
+replicas:
+  - name: backend
+    count: 1
+  - name: frontend
+    count: 1
+
+# Dev-specific config
+configMapGenerator:
+  - name: app-config
+    behavior: merge
+    literals:
+      - ENVIRONMENT=development
+      - LOG_LEVEL=debug
+      - ENABLE_DEBUG=true
+      - ENABLE_METRICS=true
+      - ENABLE_TRACING=false
+      - DATABASE_HOST=dev-db.example.com
+      - DATABASE_NAME=myapp_dev
+      - REDIS_HOST=dev-redis.example.com
+      - CORS_ORIGINS=https://dev.app.example.com,http://localhost:3000,http://localhost:8000
+
+# Dev secrets
+secretGenerator:
+  - name: app-secrets
+    behavior: replace
+    type: Opaque
+    literals:
+      - DATABASE_PASSWORD=dev-password
+      - JWT_SECRET=dev-jwt-secret-not-secure
+      - API_KEY=dev-api-key
+
+# Dev patches
+patches:
+  # Minimal resource limits for dev
+  - target:
+      kind: Deployment
+      name: backend
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+  
+  - target:
+      kind: Deployment
+      name: frontend
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "100m"
+  
+  # Update ingress for dev domain
+  - target:
+      kind: Ingress
+      name: app-ingress
+    patch: |-
+      - op: replace
+        path: /spec/rules/0/host
+        value: dev.app.example.com
+      - op: replace
+        path: /spec/rules/1/host
+        value: api-dev.app.example.com
+      - op: replace
+        path: /spec/tls/0/hosts
+        value:
+          - dev.app.example.com
+          - api-dev.app.example.com
+  
+  # Add dev-specific annotations to ingress
+  - target:
+      kind: Ingress
+      name: app-ingress
+    patch: |-
+      - op: add
+        path: /metadata/annotations/cert-manager.io~1cluster-issuer
+        value: letsencrypt-staging
+      - op: replace
+        path: /metadata/annotations/nginx.ingress.kubernetes.io~1limit-rps
+        value: "100"
+      - op: replace
+        path: /metadata/annotations/nginx.ingress.kubernetes.io~1limit-rpm
+        value: "10000"
+  
+  # Enable debug mode for backend
+  - target:
+      kind: Deployment
+      name: backend
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: DEBUG
+          value: "true"
+
+# Dev-specific images (overridden by CI/CD)
+images:
+  - name: backend
+    newName: ghcr.io/myorg/myapp/backend
+    newTag: dev
+  - name: frontend
+    newName: ghcr.io/myorg/myapp/frontend
+    newTag: dev

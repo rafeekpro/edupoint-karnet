@@ -1,0 +1,134 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Reference to base configuration
+bases:
+  - ../../base
+
+# Namespace for staging
+namespace: myapp-staging
+
+# Staging-specific labels
+commonLabels:
+  environment: staging
+  tier: staging
+
+# Staging-specific annotations
+commonAnnotations:
+  environment: staging
+  managed-by: kustomize
+
+# Override namespace name
+patchesJson6902:
+  - target:
+      version: v1
+      kind: Namespace
+      name: myapp
+    patch: |-
+      - op: replace
+        path: /metadata/name
+        value: myapp-staging
+
+# Staging replica count
+replicas:
+  - name: backend
+    count: 2
+  - name: frontend
+    count: 2
+
+# Staging-specific config
+configMapGenerator:
+  - name: app-config
+    behavior: merge
+    literals:
+      - ENVIRONMENT=staging
+      - LOG_LEVEL=info
+      - ENABLE_DEBUG=true
+      - ENABLE_METRICS=true
+      - ENABLE_TRACING=true
+      - DATABASE_HOST=staging-db.example.com
+      - DATABASE_NAME=myapp_staging
+      - REDIS_HOST=staging-redis.example.com
+      - CORS_ORIGINS=https://staging.app.example.com
+
+# Staging secrets
+secretGenerator:
+  - name: app-secrets
+    behavior: replace
+    type: Opaque
+    literals:
+      - DATABASE_PASSWORD=staging-password-placeholder
+      - JWT_SECRET=staging-jwt-secret-placeholder
+      - API_KEY=staging-api-key-placeholder
+
+# Staging patches
+patches:
+  # Resource limits for staging
+  - target:
+      kind: Deployment
+      name: backend
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+  
+  - target:
+      kind: Deployment
+      name: frontend
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests:
+            memory: "256Mi"
+            cpu: "125m"
+          limits:
+            memory: "512Mi"
+            cpu: "250m"
+  
+  # Update ingress for staging domain
+  - target:
+      kind: Ingress
+      name: app-ingress
+    patch: |-
+      - op: replace
+        path: /spec/rules/0/host
+        value: staging.app.example.com
+      - op: replace
+        path: /spec/rules/1/host
+        value: api-staging.app.example.com
+      - op: replace
+        path: /spec/tls/0/hosts
+        value:
+          - staging.app.example.com
+          - api-staging.app.example.com
+  
+  # Add staging-specific annotations to ingress
+  - target:
+      kind: Ingress
+      name: app-ingress
+    patch: |-
+      - op: add
+        path: /metadata/annotations/cert-manager.io~1cluster-issuer
+        value: letsencrypt-staging
+      - op: replace
+        path: /metadata/annotations/nginx.ingress.kubernetes.io~1limit-rps
+        value: "20"
+      - op: replace
+        path: /metadata/annotations/nginx.ingress.kubernetes.io~1limit-rpm
+        value: "500"
+
+# Staging-specific images (overridden by CI/CD)
+images:
+  - name: backend
+    newName: ghcr.io/myorg/myapp/backend
+    newTag: latest
+  - name: frontend
+    newName: ghcr.io/myorg/myapp/frontend
+    newTag: latest
