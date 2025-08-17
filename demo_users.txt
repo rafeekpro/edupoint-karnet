@@ -1,0 +1,50 @@
+============================================================
+VOUCHERSKIT DEMO USERS
+============================================================
+
+These are the demo user credentials for testing:
+
+Role: ADMIN (Super Admin)
+Email: admin@voucherskit.com
+Password: Admin123!
+Name: System Administrator
+----------------------------------------
+
+Role: ORGANIZATION_OWNER
+Email: owner@voucherskit.com
+Password: Owner123!
+Name: Organization Owner
+----------------------------------------
+
+Role: THERAPIST
+Email: therapist@voucherskit.com
+Password: Therapist123!
+Name: Demo Therapist
+----------------------------------------
+
+Role: STAFF
+Email: staff@voucherskit.com
+Password: Staff123!
+Name: Staff Member
+----------------------------------------
+
+Role: CLIENT
+Email: client@voucherskit.com
+Password: Client123!
+Name: Demo Client
+----------------------------------------
+
+NOTE: Please change these passwords in production!
+These credentials are for development/demo purposes only.
+
+Login endpoint: POST /token
+Body format: {"username": "email", "password": "password"}
+
+Example login request:
+curl -X POST "https://api.voucherskit.com/token" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "username=admin@voucherskit.com&password=Admin123!"
+
+============================================================
+Generated at: 2024-08-17 19:54:00
+============================================================

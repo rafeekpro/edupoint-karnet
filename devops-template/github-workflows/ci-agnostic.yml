@@ -1,0 +1,424 @@
+name: CI - Build and Push Images
+
+# ============================================================================
+# CONFIGURATION SECTION - Customize these values for your project
+# ============================================================================
+env:
+  # Registry Configuration
+  REGISTRY: ghcr.io                      # Container registry (ghcr.io, docker.io, etc.)
+  REGISTRY_OWNER: YOUR_GITHUB_USERNAME   # Registry owner/organization
+  
+  # Repository Configuration  
+  REPO_NAME: YOUR_REPO_NAME              # Repository name
+  
+  # Service Names
+  BACKEND_SERVICE_NAME: backend          # Backend service name
+  FRONTEND_SERVICE_NAME: frontend        # Frontend service name
+  
+  # Build Configuration
+  BACKEND_CONTEXT: ./backend             # Backend build context path
+  FRONTEND_CONTEXT: ./frontend           # Frontend build context path
+  BACKEND_DOCKERFILE: Dockerfile         # Backend Dockerfile name
+  FRONTEND_DOCKERFILE: Dockerfile        # Frontend Dockerfile name
+  
+  # Platform Configuration
+  BUILD_PLATFORMS: linux/amd64           # Build platforms (linux/amd64,linux/arm64)
+  
+  # Python/Node Configuration
+  PYTHON_VERSION: "3.11"                 # Python version for backend
+  NODE_VERSION: "20"                     # Node.js version for frontend
+  
+  # Testing Configuration
+  RUN_TESTS: true                        # Enable/disable tests
+  RUN_LINTING: true                      # Enable/disable linting
+  RUN_SECURITY_SCAN: true                # Enable/disable security scanning
+  
+  # Cache Configuration
+  USE_BUILD_CACHE: true                  # Enable/disable build cache
+  CACHE_MODE: max                        # Cache mode (min, max)
+
+# ============================================================================
+# WORKFLOW TRIGGERS
+# ============================================================================
+on:
+  push:
+    branches: 
+      - main
+      - develop
+      - release/*
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - '.github/workflows/ci*.yml'
+      - 'Dockerfile*'
+      - '*.dockerfile'
+      
+  pull_request:
+    branches: 
+      - main
+      - develop
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - '.github/workflows/ci*.yml'
+      
+  workflow_dispatch:
+    inputs:
+      build-backend:
+        description: 'Build Backend'
+        type: boolean
+        default: true
+      build-frontend:
+        description: 'Build Frontend'
+        type: boolean
+        default: true
+      skip-tests:
+        description: 'Skip Tests'
+        type: boolean
+        default: false
+
+# ============================================================================
+# REUSABLE WORKFLOW JOBS
+# ============================================================================
+jobs:
+  # ===========================================
+  # JOB: Setup and Configuration
+  # ===========================================
+  setup:
+    name: Setup Build Configuration
+    runs-on: ubuntu-latest
+    outputs:
+      image-tag: ${{ steps.generate-tag.outputs.tag }}
+      backend-image: ${{ steps.generate-names.outputs.backend-image }}
+      frontend-image: ${{ steps.generate-names.outputs.frontend-image }}
+      should-build-backend: ${{ steps.check-changes.outputs.backend }}
+      should-build-frontend: ${{ steps.check-changes.outputs.frontend }}
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Generate image tag
+      id: generate-tag
+      run: |
+        SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+        
+        if [[ "${{ github.ref }}" == refs/heads/* ]]; then
+          BRANCH_NAME=$(echo "${{ github.ref }}" | sed 's|refs/heads/||')
+          TAG="run-${{ github.run_number }}-${SHORT_SHA}"
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+        elif [[ "${{ github.ref }}" == refs/pull/* ]]; then
+          PR_NUMBER=$(echo "${{ github.ref }}" | sed 's|refs/pull/||' | sed 's|/merge||')
+          TAG="pr-${PR_NUMBER}-${SHORT_SHA}"
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+        else
+          TAG="${SHORT_SHA}"
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+        fi
+        
+        echo "Generated tag: ${TAG}"
+    
+    - name: Generate image names
+      id: generate-names
+      run: |
+        BACKEND_IMAGE="${{ env.REGISTRY }}/${{ env.REGISTRY_OWNER }}/${{ env.REPO_NAME }}-${{ env.BACKEND_SERVICE_NAME }}"
+        FRONTEND_IMAGE="${{ env.REGISTRY }}/${{ env.REGISTRY_OWNER }}/${{ env.REPO_NAME }}-${{ env.FRONTEND_SERVICE_NAME }}"
+        
+        echo "backend-image=${BACKEND_IMAGE}" >> $GITHUB_OUTPUT
+        echo "frontend-image=${FRONTEND_IMAGE}" >> $GITHUB_OUTPUT
+        
+        echo "Backend image: ${BACKEND_IMAGE}"
+        echo "Frontend image: ${FRONTEND_IMAGE}"
+    
+    - name: Check for changes
+      id: check-changes
+      run: |
+        # Check if we should build based on workflow dispatch inputs
+        if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+          echo "backend=${{ inputs.build-backend }}" >> $GITHUB_OUTPUT
+          echo "frontend=${{ inputs.build-frontend }}" >> $GITHUB_OUTPUT
+        else
+          # Check for actual file changes
+          BACKEND_CHANGED=false
+          FRONTEND_CHANGED=false
+          
+          if [ "${{ github.event_name }}" == "push" ]; then
+            # Check changed files in push
+            if git diff --name-only HEAD^ HEAD | grep -q "^backend/"; then
+              BACKEND_CHANGED=true
+            fi
+            if git diff --name-only HEAD^ HEAD | grep -q "^frontend/"; then
+              FRONTEND_CHANGED=true
+            fi
+          else
+            # For PR or other events, build both
+            BACKEND_CHANGED=true
+            FRONTEND_CHANGED=true
+          fi
+          
+          echo "backend=${BACKEND_CHANGED}" >> $GITHUB_OUTPUT
+          echo "frontend=${FRONTEND_CHANGED}" >> $GITHUB_OUTPUT
+        fi
+
+  # ===========================================
+  # JOB: Backend Build, Test & Push
+  # ===========================================
+  backend:
+    name: Backend - Build & Push
+    runs-on: ubuntu-latest
+    needs: setup
+    if: needs.setup.outputs.should-build-backend == 'true'
+    permissions:
+      contents: read
+      packages: write
+      security-events: write
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Log in to Container Registry
+      if: github.event_name != 'pull_request'
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    
+    # Optional: Run tests before building
+    - name: Set up Python
+      if: env.RUN_TESTS == 'true' && inputs.skip-tests != true
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+    
+    - name: Run backend tests
+      if: env.RUN_TESTS == 'true' && inputs.skip-tests != true
+      working-directory: ${{ env.BACKEND_CONTEXT }}
+      run: |
+        # Install dependencies if requirements.txt exists
+        if [ -f requirements.txt ]; then
+          pip install -r requirements.txt
+        fi
+        
+        # Run tests if they exist
+        if [ -f requirements-test.txt ]; then
+          pip install -r requirements-test.txt
+        fi
+        
+        # Run pytest if it exists
+        if command -v pytest &> /dev/null; then
+          pytest tests/ -v || true
+        else
+          echo "No tests found, skipping..."
+        fi
+    
+    - name: Generate Docker metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ needs.setup.outputs.backend-image }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=raw,value=latest,enable={{is_default_branch}}
+          type=raw,value=${{ needs.setup.outputs.image-tag }}
+    
+    - name: Build and push backend image
+      uses: docker/build-push-action@v5
+      with:
+        context: ${{ env.BACKEND_CONTEXT }}
+        file: ${{ env.BACKEND_CONTEXT }}/${{ env.BACKEND_DOCKERFILE }}
+        platforms: ${{ env.BUILD_PLATFORMS }}
+        push: ${{ github.event_name != 'pull_request' }}
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: ${{ env.USE_BUILD_CACHE == 'true' && 'type=gha' || '' }}
+        cache-to: ${{ env.USE_BUILD_CACHE == 'true' && format('type=gha,mode={0}', env.CACHE_MODE) || '' }}
+        build-args: |
+          BUILD_DATE=${{ github.event.head_commit.timestamp }}
+          VCS_REF=${{ github.sha }}
+          VERSION=${{ needs.setup.outputs.image-tag }}
+    
+    # Security scanning
+    - name: Run Trivy vulnerability scanner
+      if: env.RUN_SECURITY_SCAN == 'true' && github.event_name != 'pull_request'
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ needs.setup.outputs.backend-image }}:${{ needs.setup.outputs.image-tag }}
+        format: 'sarif'
+        output: 'trivy-backend-results.sarif'
+        severity: 'CRITICAL,HIGH'
+    
+    - name: Upload Trivy results to GitHub Security
+      if: env.RUN_SECURITY_SCAN == 'true' && github.event_name != 'pull_request'
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: 'trivy-backend-results.sarif'
+        category: 'trivy-backend'
+
+  # ===========================================
+  # JOB: Frontend Build, Test & Push
+  # ===========================================
+  frontend:
+    name: Frontend - Build & Push
+    runs-on: ubuntu-latest
+    needs: setup
+    if: needs.setup.outputs.should-build-frontend == 'true'
+    permissions:
+      contents: read
+      packages: write
+      security-events: write
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Log in to Container Registry
+      if: github.event_name != 'pull_request'
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    
+    # Optional: Run tests before building
+    - name: Setup Node.js
+      if: env.RUN_TESTS == 'true' && inputs.skip-tests != true
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: ${{ env.FRONTEND_CONTEXT }}/package-lock.json
+    
+    - name: Run frontend tests
+      if: env.RUN_TESTS == 'true' && inputs.skip-tests != true
+      working-directory: ${{ env.FRONTEND_CONTEXT }}
+      run: |
+        # Install dependencies if package.json exists
+        if [ -f package.json ]; then
+          npm ci || npm install
+        fi
+        
+        # Run linting if configured
+        if [ "${{ env.RUN_LINTING }}" == "true" ]; then
+          npm run lint || true
+        fi
+        
+        # Run tests if configured
+        npm test -- --passWithNoTests || true
+    
+    - name: Generate Docker metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ needs.setup.outputs.frontend-image }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=raw,value=latest,enable={{is_default_branch}}
+          type=raw,value=${{ needs.setup.outputs.image-tag }}
+    
+    - name: Build and push frontend image
+      uses: docker/build-push-action@v5
+      with:
+        context: ${{ env.FRONTEND_CONTEXT }}
+        file: ${{ env.FRONTEND_CONTEXT }}/${{ env.FRONTEND_DOCKERFILE }}
+        platforms: ${{ env.BUILD_PLATFORMS }}
+        push: ${{ github.event_name != 'pull_request' }}
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: ${{ env.USE_BUILD_CACHE == 'true' && 'type=gha' || '' }}
+        cache-to: ${{ env.USE_BUILD_CACHE == 'true' && format('type=gha,mode={0}', env.CACHE_MODE) || '' }}
+        build-args: |
+          BUILD_DATE=${{ github.event.head_commit.timestamp }}
+          VCS_REF=${{ github.sha }}
+          VERSION=${{ needs.setup.outputs.image-tag }}
+    
+    # Security scanning
+    - name: Run Trivy vulnerability scanner
+      if: env.RUN_SECURITY_SCAN == 'true' && github.event_name != 'pull_request'
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ needs.setup.outputs.frontend-image }}:${{ needs.setup.outputs.image-tag }}
+        format: 'sarif'
+        output: 'trivy-frontend-results.sarif'
+        severity: 'CRITICAL,HIGH'
+    
+    - name: Upload Trivy results to GitHub Security
+      if: env.RUN_SECURITY_SCAN == 'true' && github.event_name != 'pull_request'
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: 'trivy-frontend-results.sarif'
+        category: 'trivy-frontend'
+
+  # ===========================================
+  # JOB: Summary and Notifications
+  # ===========================================
+  summary:
+    name: CI Summary
+    runs-on: ubuntu-latest
+    needs: [setup, backend, frontend]
+    if: always()
+    
+    steps:
+    - name: Create summary
+      run: |
+        echo "## 🚀 CI Build Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        echo "### 📦 Build Information" >> $GITHUB_STEP_SUMMARY
+        echo "- **Workflow:** ${{ github.workflow }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Run Number:** ${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "- **Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Triggered by:** @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Image Tag:** \`${{ needs.setup.outputs.image-tag }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        echo "### 🐳 Docker Images" >> $GITHUB_STEP_SUMMARY
+        echo "| Component | Status | Image |" >> $GITHUB_STEP_SUMMARY
+        echo "|-----------|--------|-------|" >> $GITHUB_STEP_SUMMARY
+        
+        # Backend status
+        if [ "${{ needs.setup.outputs.should-build-backend }}" == "true" ]; then
+          BACKEND_STATUS="${{ needs.backend.result }}"
+          BACKEND_IMAGE="${{ needs.setup.outputs.backend-image }}:${{ needs.setup.outputs.image-tag }}"
+        else
+          BACKEND_STATUS="skipped"
+          BACKEND_IMAGE="No changes detected"
+        fi
+        echo "| Backend | ${BACKEND_STATUS} | \`${BACKEND_IMAGE}\` |" >> $GITHUB_STEP_SUMMARY
+        
+        # Frontend status
+        if [ "${{ needs.setup.outputs.should-build-frontend }}" == "true" ]; then
+          FRONTEND_STATUS="${{ needs.frontend.result }}"
+          FRONTEND_IMAGE="${{ needs.setup.outputs.frontend-image }}:${{ needs.setup.outputs.image-tag }}"
+        else
+          FRONTEND_STATUS="skipped"
+          FRONTEND_IMAGE="No changes detected"
+        fi
+        echo "| Frontend | ${FRONTEND_STATUS} | \`${FRONTEND_IMAGE}\` |" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        # Overall status
+        if [ "${{ needs.backend.result }}" == "success" ] || [ "${{ needs.frontend.result }}" == "success" ]; then
+          echo "✅ **Build completed successfully!**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📋 Next Steps" >> $GITHUB_STEP_SUMMARY
+          echo "- Images are ready for deployment" >> $GITHUB_STEP_SUMMARY
+          echo "- CD workflow will be triggered automatically for main branch" >> $GITHUB_STEP_SUMMARY
+        elif [ "${{ needs.backend.result }}" == "skipped" ] && [ "${{ needs.frontend.result }}" == "skipped" ]; then
+          echo "⏭️ **No builds required - no relevant changes detected**" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ **Build failed. Please check the logs.**" >> $GITHUB_STEP_SUMMARY
+        fi

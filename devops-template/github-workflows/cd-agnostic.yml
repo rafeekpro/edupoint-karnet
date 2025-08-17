@@ -1,0 +1,588 @@
+name: CD - Deploy to Kubernetes
+
+# ============================================================================
+# CONFIGURATION SECTION - Customize these values for your project
+# ============================================================================
+env:
+  # Registry Configuration
+  REGISTRY: ghcr.io                      # Container registry
+  REGISTRY_OWNER: YOUR_GITHUB_USERNAME   # Registry owner/organization
+  
+  # Repository Configuration
+  REPO_NAME: YOUR_REPO_NAME              # Repository name
+  
+  # Service Names
+  BACKEND_SERVICE_NAME: backend          # Backend service name
+  FRONTEND_SERVICE_NAME: frontend        # Frontend service name
+  
+  # Kubernetes Configuration
+  K8S_NAMESPACE_PREFIX: myapp            # Namespace prefix (will add -dev, -staging, -prod)
+  K8S_DEPLOYMENT_BACKEND: backend        # Backend deployment name
+  K8S_DEPLOYMENT_FRONTEND: frontend      # Frontend deployment name
+  K8S_MANIFEST_PATH: devops/kubernetes   # Path to Kubernetes manifests
+  
+  # Kustomize Configuration
+  USE_KUSTOMIZE: true                    # Use Kustomize for manifest management
+  KUSTOMIZE_VERSION: latest              # Kustomize version to install
+  
+  # Deployment Configuration
+  DEPLOYMENT_TIMEOUT: 300s               # Deployment rollout timeout
+  ROLLBACK_ON_FAILURE: true              # Auto-rollback on failure
+  FORCE_ROLLOUT_RESTART: true            # Force pod restart on deployment
+  
+  # Health Check Configuration
+  HEALTH_CHECK_RETRIES: 3                # Number of health check retries
+  HEALTH_CHECK_DELAY: 30                 # Delay between health checks (seconds)
+  
+  # Cleanup Configuration
+  CLEANUP_OLD_IMAGES: true               # Clean up old container images
+  IMAGES_TO_KEEP: 10                     # Number of images to keep
+
+# ============================================================================
+# WORKFLOW TRIGGERS
+# ============================================================================
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target Environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+      image-tag:
+        description: 'Docker Image Tag (leave empty for latest from CI)'
+        required: false
+        type: string
+      deploy-backend:
+        description: 'Deploy Backend'
+        required: true
+        default: true
+        type: boolean
+      deploy-frontend:
+        description: 'Deploy Frontend'
+        required: true
+        default: true
+        type: boolean
+      run-smoke-tests:
+        description: 'Run Smoke Tests After Deployment'
+        required: true
+        default: true
+        type: boolean
+      dry-run:
+        description: 'Dry Run (show what would be deployed)'
+        required: false
+        default: false
+        type: boolean
+  
+  workflow_run:
+    workflows: ["CI - Build and Push Images"]
+    types:
+      - completed
+    branches: [main, develop]
+
+# ============================================================================
+# REUSABLE WORKFLOW JOBS
+# ============================================================================
+jobs:
+  # ===========================================
+  # JOB: Setup and Configuration
+  # ===========================================
+  setup:
+    name: Setup Deployment Configuration
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    outputs:
+      environment: ${{ steps.config.outputs.environment }}
+      namespace: ${{ steps.config.outputs.namespace }}
+      image-tag: ${{ steps.config.outputs.image-tag }}
+      backend-image: ${{ steps.config.outputs.backend-image }}
+      frontend-image: ${{ steps.config.outputs.frontend-image }}
+      manifest-path: ${{ steps.config.outputs.manifest-path }}
+      cluster-endpoint: ${{ steps.config.outputs.cluster-endpoint }}
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Configure deployment settings
+      id: config
+      run: |
+        # Determine environment
+        if [ "${{ github.event_name }}" == "workflow_run" ]; then
+          # Auto-deploy after CI
+          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            ENVIRONMENT="prod"
+          elif [ "${{ github.ref }}" == "refs/heads/develop" ]; then
+            ENVIRONMENT="staging"
+          else
+            ENVIRONMENT="dev"
+          fi
+        else
+          # Manual deployment
+          ENVIRONMENT="${{ inputs.environment }}"
+        fi
+        echo "environment=${ENVIRONMENT}" >> $GITHUB_OUTPUT
+        
+        # Set namespace
+        NAMESPACE="${{ env.K8S_NAMESPACE_PREFIX }}-${ENVIRONMENT}"
+        echo "namespace=${NAMESPACE}" >> $GITHUB_OUTPUT
+        
+        # Determine image tag
+        if [ "${{ github.event_name }}" == "workflow_run" ]; then
+          # Get tag from CI workflow
+          SHORT_SHA=$(echo "${{ github.event.workflow_run.head_sha }}" | cut -c1-7)
+          IMAGE_TAG="run-${{ github.event.workflow_run.run_number }}-${SHORT_SHA}"
+        elif [ -n "${{ inputs.image-tag }}" ]; then
+          # Use provided tag
+          IMAGE_TAG="${{ inputs.image-tag }}"
+        else
+          # Default to latest
+          IMAGE_TAG="latest"
+        fi
+        echo "image-tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
+        
+        # Generate full image names
+        BACKEND_IMAGE="${{ env.REGISTRY }}/${{ env.REGISTRY_OWNER }}/${{ env.REPO_NAME }}-${{ env.BACKEND_SERVICE_NAME }}:${IMAGE_TAG}"
+        FRONTEND_IMAGE="${{ env.REGISTRY }}/${{ env.REGISTRY_OWNER }}/${{ env.REPO_NAME }}-${{ env.FRONTEND_SERVICE_NAME }}:${IMAGE_TAG}"
+        echo "backend-image=${BACKEND_IMAGE}" >> $GITHUB_OUTPUT
+        echo "frontend-image=${FRONTEND_IMAGE}" >> $GITHUB_OUTPUT
+        
+        # Set manifest path
+        if [ "${{ env.USE_KUSTOMIZE }}" == "true" ]; then
+          MANIFEST_PATH="${{ env.K8S_MANIFEST_PATH }}/overlays/${ENVIRONMENT}"
+        else
+          MANIFEST_PATH="${{ env.K8S_MANIFEST_PATH }}/${ENVIRONMENT}"
+        fi
+        echo "manifest-path=${MANIFEST_PATH}" >> $GITHUB_OUTPUT
+        
+        # Environment-specific settings
+        case "${ENVIRONMENT}" in
+          prod)
+            echo "cluster-endpoint=prod.k8s.example.com" >> $GITHUB_OUTPUT
+            ;;
+          staging)
+            echo "cluster-endpoint=staging.k8s.example.com" >> $GITHUB_OUTPUT
+            ;;
+          dev)
+            echo "cluster-endpoint=dev.k8s.example.com" >> $GITHUB_OUTPUT
+            ;;
+        esac
+        
+        # Summary
+        echo "### Deployment Configuration" >> $GITHUB_STEP_SUMMARY
+        echo "- **Environment:** ${ENVIRONMENT}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Namespace:** ${NAMESPACE}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Image Tag:** ${IMAGE_TAG}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Backend Image:** \`${BACKEND_IMAGE}\`" >> $GITHUB_STEP_SUMMARY
+        echo "- **Frontend Image:** \`${FRONTEND_IMAGE}\`" >> $GITHUB_STEP_SUMMARY
+
+  # ===========================================
+  # JOB: Deploy to Kubernetes
+  # ===========================================
+  deploy:
+    name: Deploy to ${{ needs.setup.outputs.environment }}
+    runs-on: ubuntu-latest
+    needs: setup
+    environment:
+      name: ${{ needs.setup.outputs.environment }}
+    permissions:
+      contents: read
+      packages: read
+      id-token: write
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Login to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    
+    # ===========================================
+    # Kubernetes Authentication (choose one)
+    # ===========================================
+    
+    # Option 1: Using kubeconfig from secrets
+    - name: Configure kubectl with kubeconfig
+      run: |
+        mkdir -p $HOME/.kube
+        echo "${{ secrets[format('KUBECONFIG_{0}', upper(needs.setup.outputs.environment))] }}" | base64 -d > $HOME/.kube/config
+        chmod 600 $HOME/.kube/config
+    
+    # Option 2: Using cloud provider (uncomment as needed)
+    # - name: Configure AWS credentials
+    #   uses: aws-actions/configure-aws-credentials@v4
+    #   with:
+    #     role-to-assume: ${{ secrets[format('AWS_ROLE_{0}', upper(needs.setup.outputs.environment))] }}
+    #     aws-region: us-east-1
+    # 
+    # - name: Update kubeconfig for EKS
+    #   run: |
+    #     aws eks update-kubeconfig --name ${{ needs.setup.outputs.environment }}-cluster
+    
+    # ===========================================
+    # Install Tools
+    # ===========================================
+    
+    - name: Install kubectl
+      uses: azure/setup-kubectl@v3
+      with:
+        version: 'latest'
+    
+    - name: Install kustomize
+      if: env.USE_KUSTOMIZE == 'true'
+      run: |
+        if [ "${{ env.KUSTOMIZE_VERSION }}" == "latest" ]; then
+          curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
+        else
+          curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash -s -- ${{ env.KUSTOMIZE_VERSION }}
+        fi
+        sudo mv kustomize /usr/local/bin/
+        kustomize version
+    
+    # ===========================================
+    # Verify Cluster Connection
+    # ===========================================
+    
+    - name: Verify cluster connection
+      run: |
+        echo "### Cluster Information" >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+        kubectl version --short >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+        
+        kubectl cluster-info
+        kubectl get nodes
+    
+    # ===========================================
+    # Create Namespace and Secrets
+    # ===========================================
+    
+    - name: Create namespace
+      run: |
+        kubectl create namespace ${{ needs.setup.outputs.namespace }} --dry-run=client -o yaml | kubectl apply -f -
+        kubectl label namespace ${{ needs.setup.outputs.namespace }} environment=${{ needs.setup.outputs.environment }} --overwrite
+    
+    - name: Create image pull secret
+      run: |
+        kubectl create secret docker-registry ghcr-secret \
+          --namespace=${{ needs.setup.outputs.namespace }} \
+          --docker-server=${{ env.REGISTRY }} \
+          --docker-username=${{ github.actor }} \
+          --docker-password=${{ secrets.GITHUB_TOKEN }} \
+          --dry-run=client -o yaml | kubectl apply -f -
+    
+    - name: Create application secrets
+      run: |
+        # Create secrets from GitHub Secrets
+        kubectl create secret generic app-secrets \
+          --namespace=${{ needs.setup.outputs.namespace }} \
+          --from-literal=DATABASE_URL="${{ secrets[format('DATABASE_URL_{0}', upper(needs.setup.outputs.environment))] }}" \
+          --from-literal=JWT_SECRET="${{ secrets[format('JWT_SECRET_{0}', upper(needs.setup.outputs.environment))] }}" \
+          --from-literal=API_KEY="${{ secrets[format('API_KEY_{0}', upper(needs.setup.outputs.environment))] }}" \
+          --dry-run=client -o yaml | kubectl apply -f -
+    
+    # ===========================================
+    # Deploy Backend
+    # ===========================================
+    
+    - name: Deploy Backend
+      if: ${{ (github.event_name == 'workflow_dispatch' && inputs.deploy-backend) || github.event_name == 'workflow_run' }}
+      run: |
+        echo "### Backend Deployment" >> $GITHUB_STEP_SUMMARY
+        echo "Deploying backend with image: ${{ needs.setup.outputs.backend-image }}" >> $GITHUB_STEP_SUMMARY
+        
+        cd ${{ needs.setup.outputs.manifest-path }}
+        
+        if [ "${{ env.USE_KUSTOMIZE }}" == "true" ]; then
+          # Update image with kustomize
+          kustomize edit set image ${{ env.BACKEND_SERVICE_NAME }}=${{ needs.setup.outputs.backend-image }}
+          
+          # Apply with dry-run if requested
+          if [ "${{ inputs.dry-run }}" == "true" ]; then
+            echo "DRY RUN - Would apply:" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`yaml" >> $GITHUB_STEP_SUMMARY
+            kustomize build . | head -100 >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          else
+            kustomize build . | kubectl apply -f -
+          fi
+        else
+          # Direct kubectl apply
+          kubectl set image deployment/${{ env.K8S_DEPLOYMENT_BACKEND }} \
+            ${{ env.BACKEND_SERVICE_NAME }}=${{ needs.setup.outputs.backend-image }} \
+            -n ${{ needs.setup.outputs.namespace }}
+        fi
+        
+        if [ "${{ inputs.dry-run }}" != "true" ]; then
+          # Force rollout restart if configured
+          if [ "${{ env.FORCE_ROLLOUT_RESTART }}" == "true" ]; then
+            kubectl rollout restart deployment/${{ env.K8S_DEPLOYMENT_BACKEND }} \
+              -n ${{ needs.setup.outputs.namespace }}
+          fi
+          
+          # Wait for rollout
+          kubectl rollout status deployment/${{ env.K8S_DEPLOYMENT_BACKEND }} \
+            -n ${{ needs.setup.outputs.namespace }} \
+            --timeout=${{ env.DEPLOYMENT_TIMEOUT }} || {
+            
+            echo "❌ Backend deployment failed!" >> $GITHUB_STEP_SUMMARY
+            
+            # Get debug information
+            kubectl get pods -n ${{ needs.setup.outputs.namespace }} -l app=${{ env.BACKEND_SERVICE_NAME }}
+            kubectl describe pods -n ${{ needs.setup.outputs.namespace }} -l app=${{ env.BACKEND_SERVICE_NAME }} | tail -50
+            kubectl logs -n ${{ needs.setup.outputs.namespace }} -l app=${{ env.BACKEND_SERVICE_NAME }} --tail=50 || true
+            
+            # Rollback if configured
+            if [ "${{ env.ROLLBACK_ON_FAILURE }}" == "true" ]; then
+              echo "Rolling back backend deployment..."
+              kubectl rollout undo deployment/${{ env.K8S_DEPLOYMENT_BACKEND }} \
+                -n ${{ needs.setup.outputs.namespace }}
+            fi
+            
+            exit 1
+          }
+          
+          echo "✅ Backend deployed successfully!" >> $GITHUB_STEP_SUMMARY
+        fi
+    
+    # ===========================================
+    # Deploy Frontend
+    # ===========================================
+    
+    - name: Deploy Frontend
+      if: ${{ (github.event_name == 'workflow_dispatch' && inputs.deploy-frontend) || github.event_name == 'workflow_run' }}
+      run: |
+        echo "### Frontend Deployment" >> $GITHUB_STEP_SUMMARY
+        echo "Deploying frontend with image: ${{ needs.setup.outputs.frontend-image }}" >> $GITHUB_STEP_SUMMARY
+        
+        cd ${{ needs.setup.outputs.manifest-path }}
+        
+        if [ "${{ env.USE_KUSTOMIZE }}" == "true" ]; then
+          # Update image with kustomize
+          kustomize edit set image ${{ env.FRONTEND_SERVICE_NAME }}=${{ needs.setup.outputs.frontend-image }}
+          
+          # Apply with dry-run if requested
+          if [ "${{ inputs.dry-run }}" == "true" ]; then
+            echo "DRY RUN - Would apply:" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`yaml" >> $GITHUB_STEP_SUMMARY
+            kustomize build . | head -100 >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          else
+            kustomize build . | kubectl apply -f -
+          fi
+        else
+          # Direct kubectl apply
+          kubectl set image deployment/${{ env.K8S_DEPLOYMENT_FRONTEND }} \
+            ${{ env.FRONTEND_SERVICE_NAME }}=${{ needs.setup.outputs.frontend-image }} \
+            -n ${{ needs.setup.outputs.namespace }}
+        fi
+        
+        if [ "${{ inputs.dry-run }}" != "true" ]; then
+          # Force rollout restart if configured
+          if [ "${{ env.FORCE_ROLLOUT_RESTART }}" == "true" ]; then
+            kubectl rollout restart deployment/${{ env.K8S_DEPLOYMENT_FRONTEND }} \
+              -n ${{ needs.setup.outputs.namespace }}
+          fi
+          
+          # Wait for rollout
+          kubectl rollout status deployment/${{ env.K8S_DEPLOYMENT_FRONTEND }} \
+            -n ${{ needs.setup.outputs.namespace }} \
+            --timeout=${{ env.DEPLOYMENT_TIMEOUT }} || {
+            
+            echo "❌ Frontend deployment failed!" >> $GITHUB_STEP_SUMMARY
+            
+            # Get debug information
+            kubectl get pods -n ${{ needs.setup.outputs.namespace }} -l app=${{ env.FRONTEND_SERVICE_NAME }}
+            kubectl describe pods -n ${{ needs.setup.outputs.namespace }} -l app=${{ env.FRONTEND_SERVICE_NAME }} | tail -50
+            kubectl logs -n ${{ needs.setup.outputs.namespace }} -l app=${{ env.FRONTEND_SERVICE_NAME }} --tail=50 || true
+            
+            # Rollback if configured
+            if [ "${{ env.ROLLBACK_ON_FAILURE }}" == "true" ]; then
+              echo "Rolling back frontend deployment..."
+              kubectl rollout undo deployment/${{ env.K8S_DEPLOYMENT_FRONTEND }} \
+                -n ${{ needs.setup.outputs.namespace }}
+            fi
+            
+            exit 1
+          }
+          
+          echo "✅ Frontend deployed successfully!" >> $GITHUB_STEP_SUMMARY
+        fi
+    
+    # ===========================================
+    # Get Deployment URLs
+    # ===========================================
+    
+    - name: Get application URLs
+      if: inputs.dry-run != true
+      id: get-urls
+      run: |
+        # Try to get ingress URLs
+        BACKEND_URL=$(kubectl get ingress -n ${{ needs.setup.outputs.namespace }} -o jsonpath='{.items[?(@.metadata.name=="backend-ingress")].spec.rules[0].host}' 2>/dev/null || echo "")
+        FRONTEND_URL=$(kubectl get ingress -n ${{ needs.setup.outputs.namespace }} -o jsonpath='{.items[?(@.metadata.name=="frontend-ingress")].spec.rules[0].host}' 2>/dev/null || echo "")
+        
+        # Try LoadBalancer if no ingress
+        if [ -z "$BACKEND_URL" ]; then
+          BACKEND_URL=$(kubectl get svc ${{ env.BACKEND_SERVICE_NAME }} -n ${{ needs.setup.outputs.namespace }} -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
+        fi
+        
+        if [ -z "$FRONTEND_URL" ]; then
+          FRONTEND_URL=$(kubectl get svc ${{ env.FRONTEND_SERVICE_NAME }} -n ${{ needs.setup.outputs.namespace }} -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
+        fi
+        
+        echo "backend-url=${BACKEND_URL}" >> $GITHUB_OUTPUT
+        echo "frontend-url=${FRONTEND_URL}" >> $GITHUB_OUTPUT
+        
+        echo "### Application URLs" >> $GITHUB_STEP_SUMMARY
+        echo "- **Backend:** https://${BACKEND_URL}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Frontend:** https://${FRONTEND_URL}" >> $GITHUB_STEP_SUMMARY
+    
+    # ===========================================
+    # Deployment Summary
+    # ===========================================
+    
+    - name: Create deployment summary
+      if: inputs.dry-run != true
+      run: |
+        echo "### Deployment Status" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        echo "#### Deployments" >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+        kubectl get deployments -n ${{ needs.setup.outputs.namespace }} >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+        
+        echo "#### Pods" >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+        kubectl get pods -n ${{ needs.setup.outputs.namespace }} >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+        
+        echo "#### Services" >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+        kubectl get services -n ${{ needs.setup.outputs.namespace }} >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+  # ===========================================
+  # JOB: Smoke Tests
+  # ===========================================
+  smoke-tests:
+    name: Run Smoke Tests
+    runs-on: ubuntu-latest
+    needs: [setup, deploy]
+    if: ${{ inputs.run-smoke-tests && inputs.dry-run != true }}
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Wait for services to stabilize
+      run: sleep ${{ env.HEALTH_CHECK_DELAY }}
+    
+    - name: Configure kubectl
+      run: |
+        mkdir -p $HOME/.kube
+        echo "${{ secrets[format('KUBECONFIG_{0}', upper(needs.setup.outputs.environment))] }}" | base64 -d > $HOME/.kube/config
+        chmod 600 $HOME/.kube/config
+    
+    - name: Get service endpoints
+      id: endpoints
+      run: |
+        # Get service endpoints for testing
+        BACKEND_ENDPOINT=$(kubectl get svc ${{ env.BACKEND_SERVICE_NAME }} -n ${{ needs.setup.outputs.namespace }} -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "localhost")
+        FRONTEND_ENDPOINT=$(kubectl get svc ${{ env.FRONTEND_SERVICE_NAME }} -n ${{ needs.setup.outputs.namespace }} -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "localhost")
+        
+        echo "backend-endpoint=${BACKEND_ENDPOINT}" >> $GITHUB_OUTPUT
+        echo "frontend-endpoint=${FRONTEND_ENDPOINT}" >> $GITHUB_OUTPUT
+    
+    - name: Test backend health
+      run: |
+        echo "### Smoke Test Results" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        BACKEND_URL="https://${{ steps.endpoints.outputs.backend-endpoint }}"
+        echo "Testing backend at: ${BACKEND_URL}"
+        
+        for i in $(seq 1 ${{ env.HEALTH_CHECK_RETRIES }}); do
+          if curl -f -X GET "${BACKEND_URL}/health" -k --connect-timeout 10; then
+            echo "✅ Backend health check passed" >> $GITHUB_STEP_SUMMARY
+            break
+          else
+            echo "Attempt $i failed, retrying..."
+            if [ $i -eq ${{ env.HEALTH_CHECK_RETRIES }} ]; then
+              echo "❌ Backend health check failed after ${{ env.HEALTH_CHECK_RETRIES }} attempts" >> $GITHUB_STEP_SUMMARY
+              exit 1
+            fi
+            sleep ${{ env.HEALTH_CHECK_DELAY }}
+          fi
+        done
+    
+    - name: Test frontend availability
+      run: |
+        FRONTEND_URL="https://${{ steps.endpoints.outputs.frontend-endpoint }}"
+        echo "Testing frontend at: ${FRONTEND_URL}"
+        
+        for i in $(seq 1 ${{ env.HEALTH_CHECK_RETRIES }}); do
+          if curl -f -X GET "${FRONTEND_URL}" -k --connect-timeout 10; then
+            echo "✅ Frontend availability check passed" >> $GITHUB_STEP_SUMMARY
+            break
+          else
+            echo "Attempt $i failed, retrying..."
+            if [ $i -eq ${{ env.HEALTH_CHECK_RETRIES }} ]; then
+              echo "❌ Frontend availability check failed after ${{ env.HEALTH_CHECK_RETRIES }} attempts" >> $GITHUB_STEP_SUMMARY
+              exit 1
+            fi
+            sleep ${{ env.HEALTH_CHECK_DELAY }}
+          fi
+        done
+    
+    - name: Run additional smoke tests
+      if: hashFiles('tests/smoke-tests.sh') != ''
+      run: |
+        chmod +x tests/smoke-tests.sh
+        ./tests/smoke-tests.sh \
+          --backend-url "https://${{ steps.endpoints.outputs.backend-endpoint }}" \
+          --frontend-url "https://${{ steps.endpoints.outputs.frontend-endpoint }}" \
+          --environment "${{ needs.setup.outputs.environment }}"
+
+  # ===========================================
+  # JOB: Cleanup Old Images
+  # ===========================================
+  cleanup:
+    name: Cleanup Old Images
+    runs-on: ubuntu-latest
+    needs: [setup, deploy]
+    if: ${{ always() && env.CLEANUP_OLD_IMAGES == 'true' }}
+    permissions:
+      packages: write
+    
+    steps:
+    - name: Delete old backend images
+      uses: actions/delete-package-versions@v4
+      with:
+        package-name: '${{ env.REPO_NAME }}-${{ env.BACKEND_SERVICE_NAME }}'
+        package-type: 'container'
+        min-versions-to-keep: ${{ env.IMAGES_TO_KEEP }}
+        delete-only-untagged-versions: true
+        token: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Delete old frontend images
+      uses: actions/delete-package-versions@v4
+      with:
+        package-name: '${{ env.REPO_NAME }}-${{ env.FRONTEND_SERVICE_NAME }}'
+        package-type: 'container'
+        min-versions-to-keep: ${{ env.IMAGES_TO_KEEP }}
+        delete-only-untagged-versions: true
+        token: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Cleanup summary
+      run: |
+        echo "### 🧹 Cleanup Complete" >> $GITHUB_STEP_SUMMARY
+        echo "Old Docker images cleaned up, keeping last ${{ env.IMAGES_TO_KEEP }} versions" >> $GITHUB_STEP_SUMMARY
