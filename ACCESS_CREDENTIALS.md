@@ -23,15 +23,22 @@
 
 ## 👥 Demo User Accounts
 
-All passwords have been reset and are active as of: **2025-08-18 11:23:00**
+All passwords have been reset and are active as of: **2025-08-18 11:37:00**
 
-### Working Accounts ✅
+### All Accounts Working ✅
 
 ### 1. Super Admin
 - **Email:** `admin@voucherskit.com`
 - **Password:** `Admin123!`
 - **Role:** `admin`
 - **Permissions:** Full system access, all operations
+- **Status:** ✅ Working
+
+### 2. Organization Owner
+- **Email:** `owner@voucherskit.com`
+- **Password:** `Owner123!`
+- **Role:** `organization_owner`
+- **Permissions:** Manage organization, employees, view reports
 - **Status:** ✅ Working
 
 ### 3. Therapist
@@ -41,6 +48,13 @@ All passwords have been reset and are active as of: **2025-08-18 11:23:00**
 - **Permissions:** Manage sessions, view assigned clients
 - **Status:** ✅ Working
 
+### 4. Staff Member
+- **Email:** `staff@voucherskit.com`
+- **Password:** `Staff123!`
+- **Role:** `staff`
+- **Permissions:** Administrative tasks, support operations
+- **Status:** ✅ Working
+
 ### 5. Client
 - **Email:** `client@voucherskit.com`
 - **Password:** `Client123!`
@@ -48,23 +62,11 @@ All passwords have been reset and are active as of: **2025-08-18 11:23:00**
 - **Permissions:** View and use vouchers, book sessions
 - **Status:** ✅ Working
 
-### Accounts Under Investigation ⚠️
-
-### 2. Organization Owner
-- **Email:** `owner@voucherskit.com`
-- **Password:** `Owner123!`
-- **Role:** `organization_owner`
-- **Permissions:** Manage organization, employees, view reports
-- **Status:** ⚠️ HTTP 500 Error - Under investigation
-
-### 4. Staff Member
-- **Email:** `staff@voucherskit.com`
-- **Password:** `Staff123!`
-- **Role:** `staff`
-- **Permissions:** Administrative tasks, support operations
-- **Status:** ⚠️ HTTP 500 Error - Under investigation
-
-**Note:** Password hashes were regenerated using bcrypt compatible with the backend pod environment. Database permissions for `therapy_user` have been granted.
+**Resolution Notes:** 
+- Fixed UserRole enum to include missing `organization_owner` and `staff` roles
+- Regenerated password hashes compatible with the latest backend deployment
+- Ensured proper CORS middleware configuration in Traefik ingress
+- Database permissions for `therapy_user` have been granted
 
 ---
 
@@ -167,4 +169,4 @@ SELECT email, role FROM users WHERE email LIKE '%@voucherskit.com';
 
 ---
 
-Last Updated: 2025-08-18 11:23:00 UTC
+Last Updated: 2025-08-18 11:37:00 UTC
