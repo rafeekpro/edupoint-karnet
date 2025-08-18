@@ -9,6 +9,8 @@ class UserRole(str, Enum):
     CLIENT = "client"
     THERAPIST = "therapist"
     ADMIN = "admin"
+    ORGANIZATION_OWNER = "organization_owner"
+    STAFF = "staff"
 
 class CodeStatus(str, Enum):
     ACTIVE = "active"
